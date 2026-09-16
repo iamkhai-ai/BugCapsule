@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "docId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "frameId": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "offsetMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warn",
+              "info",
+              "debug",
+              "log"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "stack": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "page",
+              "extension",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "docId",
+          "frameId",
+          "offsetMs",
+          "seq",
+          "level",
+          "message",
+          "source"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "entries"
+  ],
+  "additionalProperties": true
+}

@@ -1,6 +1,11 @@
 import * as z from 'zod'
+import { ActionsFileSchema } from './actions'
+import { ConsoleFileSchema } from './console'
+import { EnvironmentSchema } from './environment'
 import { ManifestSchema } from './manifest'
+import { NetworkFileSchema } from './network'
 import { PrivacySchema } from './privacy'
+import { StateFileSchema } from './state'
 
 export type JsonSchemaDocument = Record<string, unknown>
 
@@ -14,9 +19,16 @@ export type JsonSchemaDocument = Record<string, unknown>
  * Không dùng `z.date()`, `z.transform()`, `z.custom()` hay bất kỳ kiểu nào
  * `z.toJSONSchema` không biểu diễn được, vì như vậy JSON Schema sẽ mất thông
  * tin và third-party implementer không còn contract để bám vào.
+ *
+ * Danh sách này khớp đúng bộ file trong spec §24.
  */
 export const SCHEMA_REGISTRY: Record<string, z.ZodType> = {
   'manifest.schema.json': ManifestSchema,
+  'environment.schema.json': EnvironmentSchema,
+  'actions.schema.json': ActionsFileSchema,
+  'network.schema.json': NetworkFileSchema,
+  'console.schema.json': ConsoleFileSchema,
+  'state.schema.json': StateFileSchema,
   'privacy.schema.json': PrivacySchema,
 }
 

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "docId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "frameId": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "offsetMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "click",
+              "input",
+              "change",
+              "submit",
+              "navigation",
+              "keydown"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "tag": {
+                "type": "string",
+                "minLength": 1
+              },
+              "selector": {
+                "type": "string",
+                "minLength": 1
+              },
+              "strategy": {
+                "type": "string",
+                "enum": [
+                  "testid",
+                  "id",
+                  "aria",
+                  "stable-attribute",
+                  "structural"
+                ]
+              },
+              "role": {
+                "type": "string"
+              },
+              "inputType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tag",
+              "selector",
+              "strategy"
+            ],
+            "additionalProperties": true
+          },
+          "url": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "valueCaptured": {
+                "type": "boolean"
+              },
+              "valueLength": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "valueCaptured"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "docId",
+          "frameId",
+          "offsetMs",
+          "seq",
+          "type"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "events"
+  ],
+  "additionalProperties": true
+}

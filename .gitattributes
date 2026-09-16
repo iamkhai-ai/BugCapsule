@@ -1,0 +1,9 @@
+# Chuẩn hoá line ending cho repo đa nền tảng.
+* text=auto eol=lf
+
+# Artifact nhị phân — không bao giờ đụng tới.
+*.png binary
+*.webp binary
+*.jpg binary
+*.bugcap binary
+*.zip binary

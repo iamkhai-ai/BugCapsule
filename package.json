@@ -13,9 +13,11 @@
     "typecheck": "tsc --noEmit",
     "gen:schemas": "tsx scripts/generate-json-schema.ts",
     "check:schemas": "tsx scripts/generate-json-schema.ts --check",
-    "gen:fixtures": "tsx scripts/generate-fixtures.ts"
+    "gen:fixtures": "tsx scripts/generate-fixtures.ts",
+    "show:diff": "tsx scripts/show-diff.ts"
   },
   "devDependencies": {
+    "@bugcapsule/diff": "workspace:*",
     "@bugcapsule/fixtures": "workspace:*",
     "@bugcapsule/format": "workspace:*",
     "@types/node": "24.13.4",

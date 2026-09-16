@@ -1,5 +1,7 @@
 export * from './common'
 export * from './shape'
+export * from './compat'
+export * from './validate'
 export * from './manifest'
 export * from './environment'
 export * from './actions'

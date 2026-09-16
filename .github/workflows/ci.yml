@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.x is the floor declared in package.json engines; 24.x is what the
+        # project is developed against. Testing both keeps that claim honest.
+        node: ['22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.8.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # The committed JSON Schema is generated from the zod source. If they can
+      # drift apart, the published contract is not actually the types anyone
+      # codes against, so this is enforced rather than trusted.
+      - name: Check JSON Schema drift
+        run: pnpm check:schemas
+
+      # Fixture capsules are committed binaries. They are only useful as
+      # evidence if regenerating them reproduces the same bytes.
+      - name: Check fixture determinism
+        run: |
+          pnpm gen:fixtures
+          if [ -n "$(git status --porcelain -- fixtures spec/0.1)" ]; then
+            echo "::error::Generated artifacts drifted from what is committed."
+            git status --porcelain -- fixtures spec/0.1
+            git --no-pager diff -- fixtures spec/0.1
+            exit 1
+          fi
+          echo "Generated artifacts reproduce the committed bytes."

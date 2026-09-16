@@ -1,110 +1,113 @@
 # BugCapsule Format Specification v0.1
 
-- **Trạng thái:** Frozen cho v0.1
+- **Status:** Frozen for v0.1
 - **`formatVersion`:** `0.1.0`
-- **Ngày:** 2026-09-16
+- **Date:** 2026-09-16
 
-> **Quy tắc quan trọng nhất của tài liệu này: format là vĩnh viễn.**
-> Một capsule đã được capture không thể nhận thêm field. Mọi thứ cần cho việc
-> đọc, diff và điều tra trong nhiều năm tới phải có mặt trong v0.1 **ngay bây
-> giờ**, kể cả khi thuật toán dùng nó chỉ xuất hiện ở phiên bản sau.
-> Đây là lý do v0.1 mang `docId`, `frameId`, `seq`, `role` và `bodyShape`.
+> **The most important rule of this document: the format is permanent.**
+> A capsule that has been captured cannot be given additional fields. Everything
+> needed to read, diff and investigate it in the years to come must be present in
+> v0.1 **right now**, even if the algorithm that uses it only appears in a later
+> version. This is why v0.1 carries `docId`, `frameId`, `seq`, `role` and `bodyShape`.
 
-Các từ khoá **MUST**, **MUST NOT**, **SHOULD**, **MAY** được hiểu theo RFC 2119.
-
----
-
-## 0. Nguồn sự thật
-
-JSON Schema trong `spec/0.1/*.schema.json` **được sinh tự động** từ
-`packages/format/src/*.ts` (zod 4). Sửa schema bằng cách sửa zod rồi chạy
-`pnpm gen:schemas`; có test chống drift nên sửa tay sẽ làm test đỏ.
-
-Hệ quả: TypeScript types, validator và contract công bố cho third party không
-thể lệch nhau, vì cả ba đọc từ một định nghĩa.
-
-Một ngoại lệ có chủ ý: **JSON Schema công bố nới `additionalProperties` thành
-`true`**. `z.object()` mặc định phát `false`, nhưng §12 bắt reader bỏ qua field
-không nhận biết — nếu không nới thì chính contract tự phá forward
-compatibility. Việc kiểm tra chặt là nghĩa vụ của **producer**, không phải của
-contract.
+The keywords **MUST**, **MUST NOT**, **SHOULD**, **MAY** are understood per RFC 2119.
 
 ---
 
-## 1. Mục tiêu và phi mục tiêu
+## 0. Source of truth
 
-**Trong v0.1:** một artifact để bàn giao khi có bug frontend — không server,
-không account, không tracking; tự chứa; mở được offline; và **diff được** giữa
-phiên chạy được và phiên hỏng.
+The JSON Schemas in `spec/0.1/*.schema.json` are **generated automatically** from
+`packages/format/src/*.ts` (zod 4). To change a schema, change the zod definition
+and then run `pnpm gen:schemas`; a drift test exists, so a manual edit turns the
+test red.
 
-**Ngoài v0.1** (không được thêm vào format ở v0.1): video, DOM replay, AI,
-cloud/backend, tích hợp Jira/Linear, HTTP response body bắt buộc, normalize
-path template.
+Consequence: the TypeScript types, the validator and the contract published to
+third parties cannot diverge, because all three read from one definition.
+
+One deliberate exception: **the published JSON Schema relaxes
+`additionalProperties` to `true`**. `z.object()` emits `false` by default, but §12
+requires the reader to ignore unrecognized fields — without the relaxation the
+contract itself would break forward compatibility. Strict checking is the
+**producer**'s obligation, not the contract's.
 
 ---
 
-## 2. Đơn vị đóng gói
+## 1. Goals and non-goals
 
-`.bugcap` là một file **ZIP**. Tên entry là một phần của format và MUST NOT đổi
-trong cùng MAJOR:
+**In v0.1:** one artifact to hand over when there is a frontend bug — no server,
+no account, no tracking; self-contained; openable offline; and **diffable** between
+a working run and a broken run.
 
-| Entry | Nội dung |
+**Outside v0.1** (not to be added to the format at v0.1): video, DOM replay, AI,
+cloud/backend, Jira/Linear integration, mandatory HTTP response bodies, path
+template normalization.
+
+---
+
+## 2. Packaging unit
+
+A `.bugcap` is a **ZIP** file. Entry names are part of the format and MUST NOT
+change within the same MAJOR:
+
+| Entry | Contents |
 |---|---|
-| `manifest.json` | Bắt buộc |
-| `environment.json` | Tuỳ chọn |
-| `actions.json` | Tuỳ chọn |
-| `network.json` | Tuỳ chọn |
-| `console.json` | Tuỳ chọn |
-| `state.json` | Tuỳ chọn |
-| `privacy.json` | Tuỳ chọn |
-| `assets/screenshot.png` | Tuỳ chọn |
+| `manifest.json` | Required |
+| `environment.json` | Optional |
+| `actions.json` | Optional |
+| `network.json` | Optional |
+| `console.json` | Optional |
+| `state.json` | Optional |
+| `privacy.json` | Optional |
+| `assets/screenshot.png` | Optional |
 
-JSON SHOULD được deflate. `assets/screenshot.png` SHOULD được **store**
-(không nén) vì PNG đã nén sẵn — nén lại chỉ làm file to thêm.
+JSON SHOULD be deflated. `assets/screenshot.png` SHOULD be **stored** (not
+compressed) because PNG is already compressed — compressing it again only makes
+the file larger.
 
-`manifest.files` ánh xạ tên logic sang đường dẫn entry. Reader MUST NOT tin
-`files`; nó MUST đọc entry thật có mặt.
+`manifest.files` maps logical names to entry paths. Reader MUST NOT trust
+`files`; it MUST read the entries that are actually present.
 
 ---
 
-## 3. Kiểu nền
+## 3. Base types
 
-- **Timestamp:** ISO 8601 UTC, MUST kết thúc bằng `Z`. Không lưu offset cục bộ.
-- **`formatVersion`:** semver đầy đủ `MAJOR.MINOR.PATCH`.
-- **`UrlRef`:** `{ origin, pathname, query }`, trong đó `query` là
+- **Timestamp:** ISO 8601 UTC, MUST end with `Z`. No local offset is stored.
+- **`formatVersion`:** full semver `MAJOR.MINOR.PATCH`.
+- **`UrlRef`:** `{ origin, pathname, query }`, where `query` is
   `Record<string, string>`.
-  - Value của key **không** nhạy cảm MUST được giữ (`?tab=settings` là tín hiệu
-    diff có giá trị).
-  - Value của key nhạy cảm MUST được thay bằng `"<redacted>"`.
-  - `?tab=settings` và `?token=SECRET` MUST NOT bị đối xử giống nhau: bỏ hết
-    value để bảo vệ một số ít là đánh mất phần lớn tín hiệu.
-- **`EventBase`** — mọi event trong capsule MUST có:
-  - `id` — định danh trong capsule.
-  - `docId` — document chứa event. **Bắt buộc**, vì sau hard navigation
-    `performance.now()` reset và `offsetMs` của document cũ và mới không tách
-    được nếu thiếu nó.
-  - `frameId` — `0` là top frame. **Bắt buộc**, nếu không thì không biết một
-    console error đến từ iframe nào.
-  - `offsetMs` — mili giây kể từ `manifest.capture.startedAt`.
-  - `seq` — số tăng đơn điệu, phá thế hoà khi trùng `offsetMs`.
+  - Values of keys that are **not** sensitive MUST be kept (`?tab=settings` is a
+    valuable diff signal).
+  - Values of sensitive keys MUST be replaced with `"<redacted>"`.
+  - `?tab=settings` and `?token=SECRET` MUST NOT be treated the same: dropping all
+    values to protect a few loses most of the signal.
+- **`EventBase`** — every event in a capsule MUST have:
+  - `id` — identifier within the capsule.
+  - `docId` — the document containing the event. **Required**, because after a hard
+    navigation `performance.now()` resets and the `offsetMs` of the old and the new
+    document cannot be told apart without it.
+  - `frameId` — `0` is the top frame. **Required**, otherwise there is no way to
+    know which iframe a console error came from.
+  - `offsetMs` — milliseconds since `manifest.capture.startedAt`.
+  - `seq` — a monotonically increasing number, breaking ties when `offsetMs`
+    collides.
 
 ---
 
 ## 4. `manifest.json`
 
-Bắt buộc: `format` (`"bugcapsule"`), `formatVersion`, `id`, `createdAt`,
+Required: `format` (`"bugcapsule"`), `formatVersion`, `id`, `createdAt`,
 `source`, `capture`.
 
-Tuỳ chọn:
-- `role`: `"working" | "broken" | "unknown"`. Thiếu MUST được đọc là
-  `"unknown"`. Field này tồn tại vì compare mode cần biết capsule nào là gì —
-  không có nó thì không dựng được hai cột Working/Broken.
-- `page`: `UrlRef` của trang.
-- `files`: bản đồ entry.
-- `captureGaps`: mảng mã ngắn khai báo **khoảng trống đã biết** của phiên
-  capture (`"workers-not-captured"`, `"missed-before-inject"`,
-  `"sw-restarted"`, ...). Khai báo trung thực để consumer không đi săn dữ liệu
-  không tồn tại.
+Optional:
+- `role`: `"working" | "broken" | "unknown"`. A missing value MUST be read as
+  `"unknown"`. This field exists because compare mode needs to know which capsule
+  is which — without it the two Working/Broken columns cannot be built.
+- `page`: `UrlRef` of the page.
+- `files`: map of entries.
+- `captureGaps`: array of short codes declaring the **known gaps** of the capture
+  session (`"workers-not-captured"`, `"missed-before-inject"`,
+  `"sw-restarted"`, ...). Declared honestly so that consumers do not go hunting
+  for data that does not exist.
 
 `capture`: `{ startedAt, endedAt, durationMs }`.
 
@@ -117,19 +120,19 @@ policy:  queryValues requestBodies responseBodies bodyShapes storageValues conso
 redaction: { applied, byRule[], removedFields{headers,queryKeys,bodyPaths,storageKeys} }
 ```
 
-**`privacy.json` là một lời tuyên bố được kiểm chứng, không phải một lời hứa.**
-Nếu `policy` nói một loại dữ liệu không được capture mà dữ liệu đó vẫn có mặt
-trong capsule, capsule **không hợp lệ** (`privacy-claim-violated`). Producer
-không thể khai một đằng làm một nẻo.
+**`privacy.json` is a verified claim, not a promise.**
+If `policy` says a category of data is not captured while that data is still
+present in the capsule, the capsule is **invalid** (`privacy-claim-violated`).
+A producer cannot declare one thing and do another.
 
-`removedFields` ghi **tên** của field đã bị loại bỏ, **không bao giờ ghi
-value**. Tên header và tên query key không phải secret, và "header
-`authorization` có được gửi không" là câu hỏi debug thật. Chỉ đếm số lượng mà
-không nêu tên là không đủ.
+`removedFields` records the **names** of removed fields, **never the value**.
+Header names and query key names are not secrets, and "was the `authorization`
+header sent" is a real debugging question. Counting occurrences without naming
+them is not enough.
 
-`policy` MUST khai đủ mọi field; không có default ngầm. Nếu `requestBodies` là
-`false`, consumer MUST hiểu là body **chưa bao giờ được đọc**, khác hẳn với
-"đã đọc rồi xoá".
+`policy` MUST declare every field; there is no implicit default. If
+`requestBodies` is `false`, a consumer MUST understand that the body **was never
+read**, which is entirely different from "read and then deleted".
 
 ---
 
@@ -138,184 +141,188 @@ không nêu tên là không đủ.
 `browser`, `os`, `viewport`, `locale`, `timezone`, `network.online`,
 `document.visibilityState`, `build`.
 
-Cố ý **không** fingerprint thiết bị: không GPU, không danh sách font, không
-hardware ID, không IP. Những thứ đó không cần cho việc reproduce và biến
-capsule thành dấu vết nhận dạng.
+Deliberately **no** device fingerprinting: no GPU, no font list, no hardware ID,
+no IP. Those things are not needed to reproduce the bug and turn the capsule into
+an identifying trace.
 
-`build` rất rẻ và trả lời câu hỏi "bug này ở deploy nào".
+`build` is very cheap and answers the question "which deploy is this bug in".
 
 ---
 
 ## 7. `actions.json`
 
-Mỗi event: `type` (`click | input | change | submit | navigation | keydown`),
+Each event: `type` (`click | input | change | submit | navigation | keydown`),
 `target` (`tag`, `selector`, `strategy`, `role?`, `inputType?`), `url?`
 (navigation), `metadata` (`valueCaptured`, `valueLength?`).
 
-`strategy` theo thứ tự tin cậy giảm dần: `testid`, `id`, `aria`,
-`stable-attribute`, `structural`. `structural` phụ thuộc layout và SHOULD được
-hiển thị với độ tin cậy thấp.
+`strategy` in decreasing order of trust: `testid`, `id`, `aria`,
+`stable-attribute`, `structural`. `structural` depends on layout and SHOULD be
+displayed with low confidence.
 
-**Invariant:** nếu `target.inputType === "password"` thì
-`metadata.valueCaptured` MUST là `false`. Không có override.
+**Invariant:** if `target.inputType === "password"` then
+`metadata.valueCaptured` MUST be `false`. There is no override.
 
 ---
 
 ## 8. `network.json`
 
-Chỉ `fetch` và `xhr`. `chrome.webRequest` không đọc được response body, nên
-monkey-patching là nguồn duy nhất — vì vậy format dùng `network.json` và
-**không bao giờ** là `.har`.
+Only `fetch` and `xhr`. `chrome.webRequest` cannot read response bodies, so
+monkey-patching is the only source — which is why the format uses `network.json`
+and **never** `.har`.
 
-Mỗi request: `method`, `url` (`UrlRef`), `resourceType`, `status`,
-`durationMs`, `request`, `response`. Mỗi phía là một `CapturedBody`:
+Each request: `method`, `url` (`UrlRef`), `resourceType`, `status`,
+`durationMs`, `request`, `response`. Each side is a `CapturedBody`:
 
 - `contentType?`
-- `bodyCaptured` — bắt buộc, không được để mơ hồ.
+- `bodyCaptured` — required, must not be left ambiguous.
 - `body?` — `{ type: "json"|"text", value }`.
-- `bodyShape?` — cây type, **mặc định được capture** (§11).
+- `bodyShape?` — type tree, **captured by default** (§11).
 - `omissionReason?` — `disabled | sensitive | unsupported | size-limit |
-  capture-failed`. `disabled` nghĩa là chưa bao giờ đọc.
+  capture-failed`. `disabled` means it was never read.
 
-**Invariant:** `bodyCaptured === false` thì `body` MUST NOT có mặt.
+**Invariant:** if `bodyCaptured === false` then `body` MUST NOT be present.
 
 ---
 
 ## 9. `console.json`
 
-Mỗi entry: `level` (`error | warn | info | debug | log`), `message`, `stack?`,
-`args?` (mảng **chuỗi** đã được producer serialize kèm depth-limit,
-size-limit, cycle-safe và redaction), `source` (`page | extension | unknown`).
+Each entry: `level` (`error | warn | info | debug | log`), `message`, `stack?`,
+`args?` (array of **strings** serialized by the producer with depth-limit,
+size-limit, cycle-safe handling and redaction), `source` (`page | extension |
+unknown`).
 
-`source` tồn tại để lọc noise từ extension khác — rác rất phổ biến trong bug
-report thật và thường bị nhầm là lỗi của app.
+`source` exists to filter noise from other extensions — junk is very common in
+real bug reports and is often mistaken for a bug in the app.
 
 ---
 
 ## 10. `state.json`
 
-- `localStorage`, `sessionStorage`: mảng `{ key, valueCaptured, value?,
+- `localStorage`, `sessionStorage`: array of `{ key, valueCaptured, value?,
   valueType? }`.
-- `cookieNames`: mảng **tên** cookie.
+- `cookieNames`: array of cookie **names**.
 
-Value cookie MUST NOT được lưu, và `Set-Cookie` nằm trong hard-deny list.
-Nhưng **tên** cookie được giữ, vì bug auth phổ biến nhất là "session cookie
-không được set" — đó là thay đổi về *sự hiện diện của key*, không phải value.
-Bỏ tên cookie trong khi giữ key localStorage là bất nhất.
+Cookie values MUST NOT be stored, and `Set-Cookie` is in the hard-deny list.
+But cookie **names** are kept, because the most common auth bug is "the session
+cookie was not set" — that is a change in *key presence*, not in value. Dropping
+cookie names while keeping localStorage keys is inconsistent.
 
-`valueType` **chỉ là type**, không phải value — cùng nguyên tắc với
-`bodyShape`, nó cho phép phát hiện `boolean → string` mà không cần đọc value.
+`valueType` is **only the type**, not the value — the same principle as
+`bodyShape`, it allows detecting `boolean → string` without reading the value.
 
 ---
 
-## 11. `bodyShape` — ngôn ngữ shape
+## 11. `bodyShape` — the shape language
 
 ```
 shape := { "type": "object", "properties": { <key>: shape } }
        | { "type": "array", "items": shape }
        | { "type": "string" | "number" | "boolean" | "null" | "unknown" }
-       | { "anyOf": [ shape, ... ] }        // ít nhất 1 phần tử
+       | { "anyOf": [ shape, ... ] }        // at least 1 element
 ```
 
-Shape được suy ra **trong page context**. Chỉ shape đi qua bridge; value không
-bao giờ rời page context.
+A shape is inferred **in the page context**. Only the shape crosses the bridge;
+a value never leaves the page context.
 
-**Vì sao mặc định bật.** Hầu hết tín hiệu diff có giá trị — `type-change`,
-`nullability-change`, `presence-change`, `schema-shape-change` — suy ra được từ
-*cấu trúc*, không cần value. Bật `bodyShape` mặc định nghĩa là diff chạy được
-với privacy mặc định, và privacy **mạnh hơn** opt-in body capture vì value
-không đi đâu cả.
+**Why it is on by default.** Most valuable diff signals — `type-change`,
+`nullability-change`, `presence-change`, `schema-shape-change` — can be derived
+from *structure*, with no need for values. Having `bodyShape` on by default means
+diffing works under default privacy, and it is **stronger** privacy than opt-in
+body capture because the value goes nowhere.
 
-Quy tắc hợp nhất nhiều shape thành một:
+Rules for merging several shapes into one:
 
-- Object: **merge key** (union các key, đệ quy từng key), MUST NOT gộp thành
-  `anyOf` — một array phần tử mà mỗi phần tử thiếu một key khác nhau là chuyện
-  bình thường, biến nó thành union sẽ tạo ra `schema-shape-change` giả.
-- Array: hợp nhất `items`.
-- Còn lại: khử trùng theo khoá canonical rồi sắp xếp; nhiều hơn một thì
-  `anyOf`.
+- Object: **merge keys** (union of the keys, recursing into each key), MUST NOT
+  collapse into `anyOf` — an array whose elements each lack a different key is
+  normal, and turning it into a union would produce a false
+  `schema-shape-change`.
+- Array: merge `items`.
+- Everything else: deduplicate by canonical key and then sort; more than one
+  becomes `anyOf`.
 
-Phạm vi v0.1 chỉ là cây type tối giản. Optionality, format, union học từ mẫu,
-ràng buộc số học là **advanced inference**, nằm ngoài v0.1.
-
----
-
-## 12. Hợp đồng tương thích
-
-Đây là contract test được, không phải "best effort":
-
-| Trường hợp | Hành vi reader |
-|---|---|
-| `MAJOR` khác | **Từ chối** kèm lý do. Reader MUST NOT đoán ngược. |
-| Cùng `MAJOR`, `MINOR` cao hơn | **Đọc được**, kèm cảnh báo. Field không nhận biết MUST bị bỏ qua. |
-| Cùng `MAJOR`, `MINOR` thấp hơn hoặc bằng | Đọc bình thường. |
-| `PATCH` | Bỏ qua. |
-| Version hỏng | Từ chối kèm lý do; MUST NOT throw ra ngoài API. |
-
-`MINOR` chỉ được **thêm field tuỳ chọn**. Nó MUST NOT đổi nghĩa của field đã
-có. `MAJOR` mới được phép breaking change.
-
-Reader MUST NOT lỗi khi gặp field lạ. Producer SHOULD lỗi khi gặp field lạ
-(chế độ strict) để bắt typo ngay lúc tạo capsule.
+The v0.1 scope is only a minimal type tree. Optionality, format, unions learned
+from samples, and numeric constraints are **advanced inference**, outside v0.1.
 
 ---
 
-## 13. Invariant mà JSON Schema không diễn đạt được
+## 12. Compatibility contract
 
-Schema giữ *cấu trúc*; validator giữ *invariant*. Đây là lý do schema không
-dùng `refine()`: ràng buộc kiểu này sẽ vô hình trong JSON Schema công bố.
+This is a testable contract, not "best effort":
 
-| Mã | Điều kiện |
+| Case | Reader behavior |
 |---|---|
-| `capture-window-invalid` | `endedAt` MUST NOT trước `startedAt` |
-| `body-present-but-not-captured` | `bodyCaptured === false` ⇒ không có `body` |
+| Different `MAJOR` | **Reject** with a reason. Reader MUST NOT guess backwards. |
+| Same `MAJOR`, higher `MINOR` | **Readable**, with a warning. Unrecognized fields MUST be ignored. |
+| Same `MAJOR`, lower or equal `MINOR` | Normal read. |
+| `PATCH` | Ignored. |
+| Malformed version | Reject with a reason; MUST NOT throw out of the API. |
+
+`MINOR` is only allowed to **add optional fields**. It MUST NOT change the
+meaning of an existing field. Only `MAJOR` is allowed to make breaking changes.
+
+Reader MUST NOT fail on an unknown field. Producer SHOULD fail on an unknown
+field (strict mode) to catch typos at the moment the capsule is created.
+
+---
+
+## 13. Invariants that JSON Schema cannot express
+
+The schema holds *structure*; the validator holds *invariants*. This is why the
+schema does not use `refine()`: constraints of this kind would be invisible in
+the published JSON Schema.
+
+| Code | Condition |
+|---|---|
+| `capture-window-invalid` | `endedAt` MUST NOT be before `startedAt` |
+| `body-present-but-not-captured` | `bodyCaptured === false` ⇒ no `body` |
 | `password-value-captured` | `inputType === "password"` ⇒ `valueCaptured === false` |
-| `privacy-claim-violated` | `policy` nói không capture ⇒ dữ liệu đó MUST NOT có mặt |
-| `unsupported-format-version` | `MAJOR` không hỗ trợ |
-| `unknown-field` | Chỉ ở chế độ `strict` của producer |
+| `privacy-claim-violated` | `policy` says not captured ⇒ that data MUST NOT be present |
+| `unsupported-format-version` | `MAJOR` not supported |
+| `unknown-field` | Only in producer `strict` mode |
 
 ---
 
-## 14. Yêu cầu an toàn khi đọc
+## 14. Safety requirements when reading
 
-**Một capsule là untrusted input.** Nó đến từ người khác qua chat hoặc email.
+**A capsule is untrusted input.** It arrives from someone else over chat or email.
 Reader MUST:
 
-1. Từ chối entry có đường dẫn tuyệt đối, bắt đầu bằng `\`, chứa `\`, có tiền
-   tố ổ đĩa (`C:`), chứa ký tự điều khiển, hoặc chứa segment `..`
-   (`unsafe-entry-path`).
-2. Kiểm tra **tổng dung lượng sau khi giải nén** từ central directory
-   **trước khi giải nén byte nào** (`capsule-too-large`). Đây là thứ làm giới
-   hạn zip bomb có thật chứ không phải trang trí.
-3. Bỏ qua entry không thuộc danh sách §2 kèm cảnh báo — **không** coi là lỗi,
-   vì MINOR tương lai được phép thêm file.
-4. Từ chối bytes không bắt đầu bằng chữ ký ZIP (`not-a-zip`).
-5. **Không bao giờ** tự động ghi entry ra đĩa.
+1. Reject entries with an absolute path, starting with `\`, containing `\`, with a
+   drive prefix (`C:`), containing control characters, or containing a `..`
+   segment (`unsafe-entry-path`).
+2. Check the **total size after decompression** from the central directory
+   **before decompressing any byte** (`capsule-too-large`). This is what makes the
+   zip bomb limit real rather than decorative.
+3. Ignore entries that are not in the §2 list, with a warning — **not** treated as
+   an error, because future MINOR versions are allowed to add files.
+4. Reject bytes that do not start with the ZIP signature (`not-a-zip`).
+5. **Never** write an entry to disk automatically.
 
 ---
 
-## 15. Giới hạn kích thước và ngân sách
+## 15. Size limits and budgets
 
-| Hạng mục | Giới hạn |
+| Item | Limit |
 |---|---|
-| File `.bugcap` | 10 MB |
-| Tổng dung lượng giải nén | `min(200 MB, 100× compressed)` |
-| Body mỗi phía | 64 KB |
-| Tổng body trong một capsule | 2 MB |
+| `.bugcap` file | 10 MB |
+| Total uncompressed size | `min(200 MB, 100× compressed)` |
+| Body per side | 64 KB |
+| Total body in one capsule | 2 MB |
 | Screenshot | 2 MB |
 
-Các giới hạn này phải nhất quán với nhau: 100 request × 64 KB × 2 phía đã là
-12.8 MB, vượt cap file — nên **ngân sách tổng của body mới là ràng buộc thật**,
-không phải giới hạn từng body.
+These limits must be consistent with one another: 100 requests × 64 KB × 2 sides
+is already 12.8 MB, exceeding the file cap — so **the total body budget is the
+real constraint**, not the per-body limit.
 
-Khi vượt ngân sách, producer MUST loại bớt theo một thứ tự xác định (body lớn
-nhất trước), ghi `omissionReason: "size-limit"`, và **MUST NOT im lặng**.
+When the budget is exceeded, the producer MUST drop data in a deterministic order
+(largest body first), record `omissionReason: "size-limit"`, and **MUST NOT be
+silent**.
 
 ---
 
-## 16. Phân loại tín hiệu diff (v0.1)
+## 16. Diff signal classification (v0.1)
 
-`weight`: 3 = đỏ, 2 = cam, 1 = thông tin. `visibility`: `shown` hoặc `hidden`.
+`weight`: 3 = red, 2 = amber, 1 = informational. `visibility`: `shown` or `hidden`.
 
 | `kind` | weight | visibility | confidence |
 |---|---|---|---|
@@ -334,82 +341,83 @@ nhất trước), ghi `omissionReason: "size-limit"`, và **MUST NOT im lặng**
 | `console-warn-appeared` | 2 | shown | medium |
 | `console-error-disappeared` | 2 | shown | medium |
 | `state-value-changed` (boolean) | 2 | shown | medium |
-| `environment-changed` (khác) | 1 | shown | low |
+| `environment-changed` (other) | 1 | shown | low |
 | `console-message-changed` | 1 | shown | low |
-| `state-value-changed` (string/số) | 1 | **hidden** | low |
+| `state-value-changed` (string/number) | 1 | **hidden** | low |
 | `action-only-in-broken` / `-baseline` | 1 | shown | low |
 
-Quy tắc phân loại đáng chú ý:
+Notable classification rules:
 
-- `field: string` → `field: string|null` là **`nullability-change`**, không
-  phải `type-change`. Đây là một trong những bug phổ biến nhất.
-- `duration-outlier` chỉ khi chênh `>= 1000ms` **và** `>= 3×`. Dưới ngưỡng bị
-  đếm vào `dropped` với kind `duration-noise`.
-- `state-value-changed` dạng boolean được **hiện**: một bit thông tin không thể
-  là PII, nên một feature flag lật `false → true` vừa riêng tư vừa nhiều tín
-  hiệu. String/số thì ngược lại — rất dễ là id hoặc timestamp — nên **ẩn mặc
-  định**.
+- `field: string` → `field: string|null` is a **`nullability-change`**, not a
+  `type-change`. This is one of the most common bugs.
+- `duration-outlier` only when the difference is `>= 1000ms` **and** `>= 3×`.
+  Below the threshold it is counted into `dropped` with the kind
+  `duration-noise`.
+- A boolean `state-value-changed` is **shown**: one bit of information cannot be
+  PII, so a feature flag flipping `false → true` is both private and full of
+  signal. Strings and numbers are the opposite — very likely an id or a
+  timestamp — so they are **hidden by default**.
 
-### Thứ tự trình bày
+### Presentation order
 
-Sắp xếp theo, lần lượt:
+Sort by, in order:
 
-1. `weight` giảm dần
-2. `proximityMs` tăng dần — `offsetMs` trừ **bất thường đầu tiên**
-   (console `error` đầu tiên hoặc status `>= 400` đầu tiên, cái nào sớm hơn).
-   Âm nghĩa là trước bất thường.
-3. bảng ưu tiên theo `kind`
-4. `kind`, rồi `id`
+1. `weight` descending
+2. `proximityMs` ascending — `offsetMs` minus the **first anomaly**
+   (the first console `error` or the first status `>= 400`, whichever is earlier).
+   Negative means before the anomaly.
+3. priority table by `kind`
+4. `kind`, then `id`
 
-Bước 3 tồn tại vì nếu không, thứ tự rơi vào so sánh chuỗi alphabet và
-`presence-change` sẽ đứng trước `status-class-change` — tức là năm hệ quả của
-một lỗi 500 sẽ chôn chính cái 500 đó xuống dưới.
+Step 3 exists because otherwise the order falls back to alphabetical string
+comparison and `presence-change` would stand above `status-class-change` — that
+is, five consequences of one 500 error would bury the 500 itself underneath.
 
-`proximityMs` đo tới **bất thường đầu tiên** chứ không tới đầu phiên capture:
-một request bình thường ở giây thứ 29 không đáng bị đẩy xuống chỉ vì nó xảy ra
-muộn.
+`proximityMs` measures to the **first anomaly**, not to the start of the capture
+session: an ordinary request at second 29 does not deserve to be pushed down
+merely because it happened late.
 
 ---
 
 ## 17. Trust budget
 
-Mọi dòng diff MUST mang `confidence` và `reason` một dòng. Một dòng không tự
-giải thích được vì sao nó đáng tin thì không đáng hiển thị.
+Every diff line MUST carry `confidence` and a one-line `reason`. A line that
+cannot explain why it is trustworthy does not deserve to be displayed.
 
-Không bao giờ che giấu im lặng:
+Never hide silently:
 
-- Thứ bị ẩn nằm trong `hidden` kèm `defaultVisibility: "hidden"`.
-- Thứ bị loại nằm trong `dropped` kèm **số lượng**, luôn hiện diện kể cả khi
-  rỗng.
-- Thứ bị người dùng bỏ qua nằm trong `suppressed` kèm `suppressedCount`.
+- What is hidden goes in `hidden` with `defaultVisibility: "hidden"`.
+- What is dropped goes in `dropped` with a **count**, always present even when
+  empty.
+- What the user dismissed goes in `suppressed` with `suppressedCount`.
 
-`id` của signal MUST ổn định giữa các lần chạy — nếu không thì dismissal vô
-nghĩa.
-
----
-
-## 18. Điều đã biết là chưa đủ
-
-Khai báo trung thực, không giấu:
-
-- **`pathTemplate` chưa có ở v0.1.** Khoá ghép request là
-  `method + pathname + chữ ký tập query key`. Hệ quả: `/products/123` và
-  `/products/456` là hai request khác nhau. Normalize template để lại v0.2;
-  diff engine *có thể* tự suy template từ hợp của hai capsule mà không cần
-  field lưu trữ.
-- Nhiều request trùng khoá ghép được ghép **theo thứ tự**; số lượng lệch nhau
-  sinh ra `request-only-in-*`. Việc ghép theo thứ tự là quy ước của v0.1.
-- Worker, WebSocket, SSE chưa được capture; producer SHOULD khai trong
-  `captureGaps` nếu chúng có mặt trên trang.
-- Không có Start/Stop: capture giữ một ring buffer và đóng băng khi người dùng
-  bấm. Cap: 500 event tổng / 200 network / 200 console / 100 action / 30 giây.
-- `chrome.debugger` không được dùng ở v0.1.
+A signal's `id` MUST be stable across runs — otherwise dismissal is meaningless.
 
 ---
 
-## 19. Kiểm chứng
+## 18. Known to be insufficient
 
-Mọi khẳng định ở trên MUST có test. Trạng thái hiện tại:
+Declared honestly, nothing hidden:
+
+- **`pathTemplate` does not exist in v0.1.** The request join key is
+  `method + pathname + signature of the query key set`. Consequence:
+  `/products/123` and `/products/456` are two different requests. Normalizing the
+  template is left to v0.2; the diff engine *can* infer the template from the
+  union of the two capsules without a stored field.
+- Multiple requests sharing a join key are joined **in order**; a mismatch in the
+  count produces `request-only-in-*`. Joining in order is the v0.1 convention.
+- Workers, WebSocket and SSE are not captured; the producer SHOULD declare them
+  in `captureGaps` if they are present on the page.
+- There is no Start/Stop: capture keeps a ring buffer and freezes when the user
+  clicks. Caps: 500 events total / 200 network / 200 console / 100 actions / 30
+  seconds.
+- `chrome.debugger` is not used in v0.1.
+
+---
+
+## 19. Verification
+
+Every claim above MUST have a test. Current status:
 
 ```
 Test Files  10 passed (10)
@@ -417,17 +425,18 @@ Test Files  10 passed (10)
 typecheck  exit 0
 ```
 
-Lệnh:
+Commands:
 
 ```
-pnpm test            # toàn bộ test
+pnpm test            # all tests
 pnpm typecheck       # tsc --noEmit
-pnpm check:schemas   # JSON Schema đã commit có khớp nguồn zod không
-pnpm gen:fixtures    # sinh lại fixtures/*.bugcap
-pnpm show:diff       # in diff end-to-end từ fixture đã commit
+pnpm check:schemas   # does the committed JSON Schema still match the zod source
+pnpm gen:fixtures    # regenerate fixtures/*.bugcap
+pnpm show:diff       # print the end-to-end diff from the committed fixture
 ```
 
-Fixture trong `fixtures/` là nhị phân đã commit, sinh tất định, và có test
-chống drift: `checkout-working` (201, `{orderId,total,etaDays}`) so với
-`checkout-broken` (500, `{error,traceId}`). **Body không được capture ở cả hai
-phía** — toàn bộ tín hiệu schema đến từ `bodyShape`, đúng như §11 thiết kế.
+The fixtures in `fixtures/` are committed binaries, generated deterministically,
+and covered by a drift test: `checkout-working` (201, `{orderId,total,etaDays}`)
+against `checkout-broken` (500, `{error,traceId}`). **Bodies are not captured on
+either side** — the whole schema signal comes from `bodyShape`, exactly as §11
+was designed.

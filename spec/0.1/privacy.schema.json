@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "policy": {
+      "type": "object",
+      "properties": {
+        "queryValues": {
+          "type": "boolean"
+        },
+        "requestBodies": {
+          "type": "boolean"
+        },
+        "responseBodies": {
+          "type": "boolean"
+        },
+        "bodyShapes": {
+          "type": "boolean"
+        },
+        "storageValues": {
+          "type": "boolean"
+        },
+        "consoleVerbose": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "queryValues",
+        "requestBodies",
+        "responseBodies",
+        "bodyShapes",
+        "storageValues",
+        "consoleVerbose"
+      ],
+      "additionalProperties": true
+    },
+    "redaction": {
+      "type": "object",
+      "properties": {
+        "applied": {
+          "type": "boolean"
+        },
+        "byRule": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": {
+                "type": "string",
+                "minLength": 1
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "rule",
+              "count"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "removedFields": {
+          "type": "object",
+          "properties": {
+            "headers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "queryKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "bodyPaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "storageKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "headers",
+            "queryKeys",
+            "bodyPaths",
+            "storageKeys"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "applied",
+        "removedFields"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "policy",
+    "redaction"
+  ],
+  "additionalProperties": true
+}

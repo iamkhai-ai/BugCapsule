@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "bugcapsule"
+    },
+    "formatVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": true
+    },
+    "capture": {
+      "type": "object",
+      "properties": {
+        "startedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+        },
+        "endedAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "startedAt",
+        "endedAt",
+        "durationMs"
+      ],
+      "additionalProperties": true
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "working",
+        "broken",
+        "unknown"
+      ]
+    },
+    "page": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string"
+        },
+        "pathname": {
+          "type": "string"
+        },
+        "query": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "origin",
+        "pathname",
+        "query"
+      ],
+      "additionalProperties": true
+    },
+    "files": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "console": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "privacy": {
+          "type": "string"
+        },
+        "screenshot": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "captureGaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "format",
+    "formatVersion",
+    "id",
+    "createdAt",
+    "source",
+    "capture"
+  ],
+  "additionalProperties": true
+}

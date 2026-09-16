@@ -10,20 +10,21 @@ import type {
 } from '@bugcapsule/format'
 
 /**
- * Fixture capsule — dữ liệu mẫu để phát triển diff engine và viewer mà không
- * cần Chrome Extension.
+ * Fixture capsule — sample data for developing the diff engine and viewer
+ * without a Chrome Extension.
  *
- * Cặp `checkout-working` / `checkout-broken` kể đúng một câu chuyện:
+ * The `checkout-working` / `checkout-broken` pair tells exactly one story:
  *
- * - luồng checkout chạy được: `POST /api/checkout` trả 201 với
+ * - the checkout flow that works: `POST /api/checkout` returns 201 with
  *   `{ orderId, total, etaDays }`
- * - cùng luồng đó hỏng: trả 500 với `{ error, traceId }`, console có error,
- *   có thêm một request retry chỉ xuất hiện ở phía hỏng, và feature flag
- *   `feature_new_checkout` đã bị bật
+ * - the same flow broken: returns 500 with `{ error, traceId }`, console has an
+ *   error, an extra retry request appears only on the broken side, and the
+ *   feature flag `feature_new_checkout` has been enabled
  *
- * Điểm quan trọng: **body không được capture ở cả hai** (`requestBodies` và
- * `responseBodies` đều `false`). Toàn bộ tín hiệu schema đến từ `bodyShape`.
- * Nghĩa là diff engine chạy được với privacy mặc định, không cần opt-in.
+ * The important point: **bodies are not captured on either side**
+ * (`requestBodies` and `responseBodies` are both `false`). All schema signal
+ * comes from `bodyShape`. That means the diff engine works with default
+ * privacy, with no opt-in.
  */
 
 const CREATED_AT = '2026-09-16T09:00:00Z'
@@ -45,9 +46,9 @@ const environment: Environment = {
 }
 
 /**
- * Shape được capture, value thì không. `storageValues: true` là chủ ý: fixture
- * này minh hoạ cả tín hiệu cần value (feature flag) để diff engine có dữ liệu
- * cho cả hai chế độ.
+ * Shape is captured, value is not. `storageValues: true` is deliberate: this
+ * fixture also illustrates the signal that needs values (feature flag), so the
+ * diff engine has data for both modes.
  */
 const privacy: Privacy = {
   policy: {
@@ -233,7 +234,7 @@ const checkoutRequest: NetworkRequest = {
   },
 }
 
-/** Capsule nhỏ nhất còn hợp lệ — spec §29. Có thể viết tay, không cần tool. */
+/** Smallest capsule that is still valid — spec §29. Can be written by hand, no tool needed. */
 export function buildMinimalCapsule(): CapsuleArchive {
   return {
     manifest: {

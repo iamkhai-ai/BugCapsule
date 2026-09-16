@@ -81,7 +81,7 @@ function validArchive(): CapsuleArchive {
   return { manifest: structuredClone(manifest), network, state, privacy }
 }
 
-/** Dựng zip thô, bỏ qua writer — dùng để mô phỏng capsule độc hại hoặc hỏng. */
+/** Builds a raw zip, bypassing the writer — used to simulate a malicious or corrupt capsule. */
 function rawZip(entries: Record<string, string | Uint8Array>): Uint8Array {
   const files: Record<string, [Uint8Array, { level: 0 | 6; mtime: Date }]> = {}
   for (const [name, value] of Object.entries(entries)) {
@@ -105,12 +105,12 @@ function entryInfo(bytes: Uint8Array): Record<string, { compressed: number; orig
 }
 
 describe('writeCapsule', () => {
-  it('tạo ra một zip hợp lệ', () => {
+  it('produces a valid zip', () => {
     const bytes = writeCapsule(validArchive())
     expect(Array.from(bytes.slice(0, 4))).toEqual([0x50, 0x4b, 0x03, 0x04])
   })
 
-  it('tự tính manifest.files theo entry thực có, không tin lời khai của caller', () => {
+  it('computes manifest.files from the entries actually present, trusting no caller claim', () => {
     const withoutShot = readCapsule(writeCapsule(validArchive()))
     expect(withoutShot.value?.manifest.files?.network).toBe('network.json')
     expect(withoutShot.value?.manifest.files?.screenshot).toBeUndefined()
@@ -121,7 +121,7 @@ describe('writeCapsule', () => {
     expect(withShot.value?.manifest.files?.screenshot).toBe('assets/screenshot.png')
   })
 
-  it('nén JSON nhưng store screenshot vì PNG đã nén sẵn', () => {
+  it('compresses JSON but stores the screenshot because PNG is already compressed', () => {
     const environment: Environment = {
       browser: { name: 'Chrome', version: '128.0.0.0' },
       os: { name: 'Windows', version: '11' },
@@ -139,13 +139,13 @@ describe('writeCapsule', () => {
     expect(info['assets/screenshot.png']?.compressed).toBe(info['assets/screenshot.png']?.original)
   })
 
-  it('không sửa archive đầu vào', () => {
+  it('does not mutate the input archive', () => {
     const archive = validArchive()
     writeCapsule(archive)
     expect(archive.manifest.files).toBeUndefined()
   })
 
-  it('từ chối capsule vi phạm lời tuyên bố privacy', () => {
+  it('rejects a capsule that violates the privacy claim', () => {
     const archive = validArchive()
     archive.network = {
       requests: [{ ...network.requests[0]!, request: { bodyCaptured: true, body: { type: 'json', value: 1 } } }],
@@ -153,18 +153,18 @@ describe('writeCapsule', () => {
     expect(() => writeCapsule(archive)).toThrow(CapsuleWriteError)
   })
 
-  it('từ chối field lạ — producer phải strict, reader mới permissive', () => {
+  it('rejects unknown fields — the producer must be strict, only the reader is permissive', () => {
     const archive = { ...validArchive(), futureField: 1 } as unknown as CapsuleArchive
     try {
       writeCapsule(archive)
-      expect.unreachable('writeCapsule phải từ chối field lạ')
+      expect.unreachable('writeCapsule must reject unknown fields')
     } catch (error) {
       expect(error).toBeInstanceOf(CapsuleWriteError)
       expect((error as CapsuleWriteError).issues.map((issue) => issue.code)).toContain('unknown-field')
     }
   })
 
-  it('ghi hai lần cho ra bytes giống hệt — cần cho fixture tái lập được', () => {
+  it('writing twice yields identical bytes — required for reproducible fixtures', () => {
     expect(Array.from(writeCapsule(validArchive()))).toEqual(
       Array.from(writeCapsule(validArchive())),
     )
@@ -172,7 +172,7 @@ describe('writeCapsule', () => {
 })
 
 describe('readCapsule', () => {
-  it('đọc lại đúng manifest và network đã ghi', () => {
+  it('reads back the manifest and network that were written', () => {
     const result = readCapsule(writeCapsule(validArchive()))
     expect(result.ok).toBe(true)
     expect(result.value?.manifest.id).toBe('capsule_test')
@@ -181,19 +181,19 @@ describe('readCapsule', () => {
     expect(result.value?.state).toEqual(state)
   })
 
-  it('trả lại screenshot dưới dạng bytes', () => {
+  it('returns the screenshot as bytes', () => {
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
     const result = readCapsule(writeCapsule({ ...validArchive(), screenshot: png }))
     expect(Array.from(result.value?.screenshot ?? [])).toEqual(Array.from(png))
   })
 
-  it('từ chối bytes không phải zip', () => {
+  it('rejects bytes that are not a zip', () => {
     const result = readCapsule(new Uint8Array([1, 2, 3, 4, 5]))
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('not-a-zip')
   })
 
-  it('từ chối entry chứa .. để chặn zip slip', () => {
+  it('rejects entries containing .. to block zip slip', () => {
     const bytes = rawZip({
       'manifest.json': JSON.stringify(manifest),
       '../evil.json': '{"pwned":true}',
@@ -203,7 +203,7 @@ describe('readCapsule', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('unsafe-entry-path')
   })
 
-  it('từ chối entry đường dẫn tuyệt đối', () => {
+  it('rejects entries with an absolute path', () => {
     const bytes = rawZip({
       'manifest.json': JSON.stringify(manifest),
       '/etc/passwd': 'root:x:0:0',
@@ -211,7 +211,7 @@ describe('readCapsule', () => {
     expect(readCapsule(bytes).issues.map((issue) => issue.code)).toContain('unsafe-entry-path')
   })
 
-  it('từ chối zip bomb dựa trên kích thước khai trong central directory', () => {
+  it('rejects a zip bomb based on the size declared in the central directory', () => {
     const bytes = rawZip({
       'manifest.json': JSON.stringify(manifest),
       'bomb.json': new Uint8Array(8192),
@@ -221,23 +221,23 @@ describe('readCapsule', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('capsule-too-large')
   })
 
-  it('bỏ qua entry lạ kèm cảnh báo, không coi là lỗi', () => {
+  it('skips unknown entries with a warning, not an error', () => {
     const bytes = rawZip({
       'manifest.json': JSON.stringify(manifest),
-      'notes.txt': 'ghi chú của người gửi',
+      'notes.txt': 'notes from the sender',
     })
     const result = readCapsule(bytes)
     expect(result.ok).toBe(true)
     expect(result.warnings.some((warning) => warning.includes('notes.txt'))).toBe(true)
   })
 
-  it('từ chối khi thiếu manifest.json', () => {
+  it('rejects a missing manifest.json', () => {
     const result = readCapsule(rawZip({ 'network.json': JSON.stringify(network) }))
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('manifest-missing')
   })
 
-  it('kiểm chứng lời tuyên bố privacy ngay khi đọc, không chỉ khi ghi', () => {
+  it('verifies the privacy claim on read, not only on write', () => {
     const bytes = rawZip({
       'manifest.json': JSON.stringify(manifest),
       'privacy.json': JSON.stringify(privacy),

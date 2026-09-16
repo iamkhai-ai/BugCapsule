@@ -7,7 +7,7 @@ import { FIXTURES, buildCheckoutBroken, buildCheckoutWorking } from '../src/inde
 function load(build: () => CapsuleArchive): CapsuleArchive {
   const result = readCapsule(writeCapsule(build()))
   if (!result.ok || result.value === undefined) {
-    throw new Error(`fixture không đọc được: ${JSON.stringify(result.issues)}`)
+    throw new Error(`fixture could not be read: ${JSON.stringify(result.issues)}`)
   }
   return result.value
 }
@@ -17,7 +17,7 @@ function checkoutOf(archive: CapsuleArchive) {
 }
 
 describe('fixture capsules', () => {
-  it('mọi fixture đọc lại được và hợp lệ', () => {
+  it('every fixture reads back and is valid', () => {
     for (const fixture of FIXTURES) {
       const result = readCapsule(writeCapsule(fixture.archive))
       expect(result.issues, fixture.name).toEqual([])
@@ -25,7 +25,7 @@ describe('fixture capsules', () => {
     }
   })
 
-  it('cặp checkout kể đúng câu chuyện: 201 với orderId so với 500 với error', () => {
+  it('the checkout pair tells the story: 201 with orderId versus 500 with error', () => {
     const working = load(buildCheckoutWorking)
     const broken = load(buildCheckoutBroken)
 
@@ -33,7 +33,7 @@ describe('fixture capsules', () => {
     expect(checkoutOf(broken)?.status).toBe(500)
   })
 
-  it('tín hiệu schema đến từ bodyShape, vì body KHÔNG được capture ở cả hai phía', () => {
+  it('schema signal comes from bodyShape, because the body is NOT captured on either side', () => {
     const working = load(buildCheckoutWorking)
     const broken = load(buildCheckoutBroken)
 
@@ -43,18 +43,18 @@ describe('fixture capsules', () => {
     expect(JSON.stringify(checkoutOf(broken)?.response.bodyShape)).toContain('traceId')
   })
 
-  it('phía hỏng có console error mà phía chạy được không có', () => {
+  it('the broken side has a console error that the working side does not', () => {
     expect(load(buildCheckoutWorking).console?.entries.some((e) => e.level === 'error')).toBe(false)
     expect(load(buildCheckoutBroken).console?.entries.some((e) => e.level === 'error')).toBe(true)
   })
 
-  it('phía hỏng có action retry mà phía chạy được không có', () => {
+  it('the broken side has a retry action that the working side does not', () => {
     expect(load(buildCheckoutBroken).actions?.events.length).toBeGreaterThan(
       load(buildCheckoutWorking).actions?.events.length ?? 0,
     )
   })
 
-  it('feature flag ngược nhau giữa hai phía', () => {
+  it('the feature flag is inverted between the two sides', () => {
     const flagOf = (archive: CapsuleArchive) =>
       archive.state?.localStorage.find((entry) => entry.key === 'feature_new_checkout')?.value
 
@@ -62,19 +62,19 @@ describe('fixture capsules', () => {
     expect(flagOf(load(buildCheckoutBroken))).toBe(true)
   })
 
-  it('không lệch với .bugcap đã commit — chạy: pnpm gen:fixtures', () => {
+  it('no drift from the committed .bugcap — run: pnpm gen:fixtures', () => {
     for (const fixture of FIXTURES) {
       const committed = readFileSync(
         join(process.cwd(), 'fixtures', `${fixture.name}.bugcap`),
       )
       expect(
         Buffer.from(writeCapsule(fixture.archive)).equals(committed),
-        `${fixture.name} lệch`,
+        `${fixture.name} drifted`,
       ).toBe(true)
     }
   })
 
-  it('đủ nhỏ để commit vào git', () => {
+  it('small enough to commit to git', () => {
     for (const fixture of FIXTURES) {
       expect(writeCapsule(fixture.archive).byteLength, fixture.name).toBeLessThan(20_000)
     }

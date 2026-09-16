@@ -23,27 +23,27 @@ const valid = {
 }
 
 describe('PrivacySchema', () => {
-  it('chấp nhận privacy block hợp lệ', () => {
+  it('accepts a valid privacy block', () => {
     expect(PrivacySchema.safeParse(valid).success).toBe(true)
   })
 
-  it('bắt buộc khai đủ policy — không có default ngầm', () => {
+  it('requires a fully declared policy — no implicit defaults', () => {
     const { bodyShapes: _bodyShapes, ...incomplete } = valid.policy
     expect(PrivacySchema.safeParse({ ...valid, policy: incomplete }).success).toBe(false)
   })
 
-  it('bắt buộc có removedFields để viewer nêu tên field đã xoá', () => {
+  it('requires removedFields so the viewer can name the fields that were removed', () => {
     const { removedFields: _removedFields, ...rest } = valid.redaction
     expect(PrivacySchema.safeParse({ ...valid, redaction: rest }).success).toBe(false)
   })
 
-  it('removedFieldCount cộng đúng và là hàm dẫn xuất, không phải field lưu trữ', () => {
+  it('removedFieldCount sums correctly and is a derived function, not a stored field', () => {
     const privacy = PrivacySchema.parse(valid)
     expect(removedFieldCount(privacy)).toBe(4)
     expect(privacy.redaction).not.toHaveProperty('total')
   })
 
-  it('byRule là optional', () => {
+  it('byRule is optional', () => {
     const { byRule: _byRule, ...redaction } = valid.redaction
     expect(PrivacySchema.safeParse({ ...valid, redaction }).success).toBe(true)
   })

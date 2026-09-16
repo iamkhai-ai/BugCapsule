@@ -5,10 +5,10 @@ import { BodyShapeSchema } from './shape'
 export const ResourceTypeSchema = z.enum(['fetch', 'xhr'])
 
 /**
- * Lý do một body không có trong capsule.
+ * Why a body is absent from the capsule.
  *
- * `disabled` nghĩa là producer chưa bao giờ đọc body — khác hẳn với "đã đọc
- * rồi xoá". Consumer MUST phân biệt hai trường hợp này.
+ * `disabled` means the producer never read the body at all — quite different
+ * from "read and then deleted". A consumer MUST distinguish these two cases.
  */
 export const BodyOmissionReasonSchema = z.enum([
   'disabled',
@@ -20,7 +20,7 @@ export const BodyOmissionReasonSchema = z.enum([
 
 export const BodyPayloadSchema = z.object({
   type: z.enum(['json', 'text']),
-  /** Bất kỳ JSON value nào. Chỉ xuất hiện khi người dùng bật capture body. */
+  /** Any JSON value. Only present when the user has enabled body capture. */
   value: z.unknown(),
 })
 
@@ -29,8 +29,8 @@ export const CapturedBodySchema = z.object({
   bodyCaptured: z.boolean(),
   body: BodyPayloadSchema.optional(),
   /**
-   * Shape của body — **mặc định được capture** vì shape không phải PII.
-   * Đây là nguồn của type-change / nullability-change / presence-change.
+   * Shape of the body — **captured by default** because shape is not PII.
+   * This is the source of type-change / nullability-change / presence-change.
    */
   bodyShape: BodyShapeSchema.optional(),
   omissionReason: BodyOmissionReasonSchema.optional(),

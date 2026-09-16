@@ -9,17 +9,17 @@ import {
 } from '@bugcapsule/format'
 
 /**
- * Diff engine: so sánh hai capsule và trả về **tín hiệu**, không trả về danh
- * sách khác biệt thô.
+ * Diff engine: compares two capsules and returns **signals**, not a raw list of
+ * differences.
  *
- * Ba nguyên tắc chi phối toàn bộ file này:
+ * Three principles govern this entire file:
  *
- * 1. Mọi signal phải tự giải thích được — có `confidence` và `reason`. Một
- *    diff line không nói được vì sao nó đáng tin thì không đáng hiển thị.
- * 2. Không bao giờ che giấu im lặng. Thứ bị ẩn nằm trong `hidden`, thứ bị loại
- *    nằm trong `dropped` kèm số lượng. Người dùng luôn đếm được.
- * 3. Thứ tự trình bày là một phần của chất lượng: nguyên nhân gốc phải đứng
- *    trước hệ quả.
+ * 1. Every signal must explain itself — it carries `confidence` and `reason`. A
+ *    diff line that cannot justify its own trust does not deserve to be shown.
+ * 2. Never hide anything silently. What is hidden lives in `hidden`, what is
+ *    dropped lives in `dropped` with a count. The user can always count.
+ * 3. Presentation order is part of the quality: the root cause must come before
+ *    its consequences.
  */
 
 export type SignalKind =
@@ -49,12 +49,12 @@ export type SignalConfidence = 'high' | 'medium' | 'low'
 export type SignalWeight = 1 | 2 | 3
 
 /**
- * Thứ tự ưu tiên giữa các loại tín hiệu **cùng weight và cùng proximity**.
+ * Priority order among signal kinds with the **same weight and same proximity**.
  *
- * Không có bảng này thì thứ tự rơi vào so sánh chuỗi alphabet, và
- * `presence-change` sẽ đứng trước `status-class-change` — tức là năm hệ quả
- * của một lỗi 500 sẽ chôn chính cái 500 đó xuống dưới. Nguyên nhân gốc phải
- * đọc được trước tiên.
+ * Without this table the order falls back to alphabetical string comparison, and
+ * `presence-change` would come before `status-class-change` — meaning the five
+ * consequences of a 500 error would bury that 500 itself underneath. The root
+ * cause must be readable first.
  */
 const SIGNAL_PRIORITY: Record<SignalKind, number> = {
   'status-class-change': 0,
@@ -84,11 +84,11 @@ export interface DiffSignal {
   weight: SignalWeight
   defaultVisibility: DefaultVisibility
   target: SignalTarget
-  /** Nhãn người đọc được, ví dụ `POST /api/checkout`. */
+  /** Human-readable label, for example `POST /api/checkout`. */
   label: string
-  /** Khoá ghép request — nhóm được nhiều signal nói về cùng một request. */
+  /** Request match key — groups multiple signals that talk about the same request. */
   matchKey?: string
-  /** Đường dẫn field trong capsule, ví dụ `response.orderId`. */
+  /** Field path inside the capsule, for example `response.orderId`. */
   field?: string
   summary: string
   before?: unknown
@@ -119,7 +119,7 @@ export interface CapsuleDiff {
 }
 
 export interface DiffOptions {
-  /** Id signal người dùng đã bỏ qua, lưu theo project ở phía viewer. */
+  /** Ids of signals the user has dismissed, stored per project on the viewer side. */
   suppressed?: readonly string[]
 }
 
@@ -136,13 +136,13 @@ function makeSignal(draft: SignalDraft): DiffSignal {
 }
 
 // ---------------------------------------------------------------------------
-// Mốc thời gian bất thường đầu tiên
+// First anomaly timestamp
 // ---------------------------------------------------------------------------
 
 /**
- * `proximityMs` đo khoảng cách tới **bất thường đầu tiên** chứ không tới đầu
- * phiên capture: một request bình thường ở giây thứ 29 không đáng bị đẩy xuống
- * chỉ vì nó xảy ra muộn.
+ * `proximityMs` measures the distance to the **first anomaly**, not to the start
+ * of the capture session: an ordinary request at second 29 does not deserve to
+ * be pushed down just because it happened late.
  */
 export function firstAnomalyMs(capsule: CapsuleArchive): number | null {
   const times: number[] = []
@@ -158,7 +158,7 @@ export function firstAnomalyMs(capsule: CapsuleArchive): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// Mô tả shape
+// Shape description
 // ---------------------------------------------------------------------------
 
 function shapeLabel(shape: BodyShape): string {
@@ -181,10 +181,10 @@ interface ShapeDifference {
 }
 
 /**
- * So sánh hai shape theo từng field, không gộp thành một dòng "schema đổi".
+ * Compares two shapes field by field instead of one "schema changed" line.
  *
- * Một dev cần biết *field nào* đổi; gộp lại thành "response schema changed"
- * là ném đi đúng phần thông tin có giá trị.
+ * A dev needs to know *which field* changed; collapsing that into "response
+ * schema changed" throws away exactly the information that has value.
  */
 export function diffBodyShapes(
   before: BodyShape | undefined,
@@ -241,8 +241,8 @@ export function diffBodyShapes(
 
   if (canonicalShapeKey(before) === canonicalShapeKey(after)) return []
 
-  // `field: string` → `field: string|null` là chuyện optional field bị trả về
-  // null, không phải đổi kiểu dữ liệu. Đây là một trong những bug phổ biến nhất.
+  // `field: string` → `field: string|null` means an optional field came back as
+  // null, not a data type change. This is one of the most common bugs.
   const kind = isNullish(before) !== isNullish(after) ? 'nullability-change' : 'type-change'
   if (kind === 'type-change' && (isAnyOfShape(before) || isAnyOfShape(after))) {
     return [
@@ -302,13 +302,13 @@ function diffOneRequest(
         target: 'network',
         label,
         matchKey,
-        summary: `${label} chuyển từ ${beforeClass}xx sang ${afterClass}xx`,
+        summary: `${label} moved from ${beforeClass}xx to ${afterClass}xx`,
         before: before.status,
         after: after.status,
         offsetMs: after.offsetMs,
         proximityMs: proximityOf(after.offsetMs),
         confidence: 'high',
-        reason: 'HTTP status đổi nhóm — đây thường là nguyên nhân gốc, không phải triệu chứng',
+        reason: 'HTTP status changed class — this is usually the root cause, not a symptom',
       }),
     )
   }
@@ -340,13 +340,13 @@ function durationSignal(
       target: 'network',
       label,
       matchKey,
-      summary: `${label} chậm hơn ${delta}ms (${before.durationMs}ms → ${after.durationMs}ms)`,
+      summary: `${label} is ${delta}ms slower (${before.durationMs}ms → ${after.durationMs}ms)`,
       before: before.durationMs,
       after: after.durationMs,
       offsetMs: after.offsetMs,
       proximityMs: proximityOf(after.offsetMs),
       confidence: 'low',
-      reason: `chênh lệch >= ${DURATION_ABSOLUTE_DELTA_MS}ms và >= ${DURATION_RATIO}x; độ trễ vốn dao động nên đây chỉ là gợi ý`,
+      reason: `delta >= ${DURATION_ABSOLUTE_DELTA_MS}ms and >= ${DURATION_RATIO}x; latency is noisy by nature, so this is only a hint`,
     }),
   }
 }
@@ -411,7 +411,7 @@ function diffNetwork(
               proximityMs: proximityOf(right.offsetMs),
               confidence: 'high',
               reason:
-                'shape của body là cấu trúc, không phải giá trị — tín hiệu này không phụ thuộc việc capture body',
+                'body shape is structure, not values — this signal does not depend on capturing the body',
             }),
           )
         }
@@ -428,13 +428,13 @@ function diffNetwork(
           target: 'network',
           label: `${request.method} ${request.url.pathname}`,
           matchKey,
-          summary: `request chỉ có ở phía hỏng: ${request.method} ${request.url.pathname}`,
+          summary: `request only present on the broken side: ${request.method} ${request.url.pathname}`,
           after: request.status,
           offsetMs: request.offsetMs,
           proximityMs: proximityOf(request.offsetMs),
           confidence: 'medium',
           reason:
-            'request không có ở phía chạy được; có thể là hệ quả (retry) hoặc nhánh code chỉ chạy khi lỗi',
+            'the request is absent on the working side; it may be a consequence (retry) or a code branch that only runs on failure',
         }),
       )
     }
@@ -449,12 +449,12 @@ function diffNetwork(
           target: 'network',
           label: `${request.method} ${request.url.pathname}`,
           matchKey,
-          summary: `request chỉ có ở phía chạy được: ${request.method} ${request.url.pathname}`,
+          summary: `request only present on the working side: ${request.method} ${request.url.pathname}`,
           before: request.status,
           offsetMs: request.offsetMs,
           proximityMs: proximityOf(request.offsetMs),
           confidence: 'medium',
-          reason: 'request biến mất ở phía hỏng — thường là dấu hiệu một bước đã bị bỏ qua',
+          reason: 'the request disappeared on the broken side — usually a sign that a step was skipped',
         }),
       )
     }
@@ -468,14 +468,14 @@ function describeShapeDifference(label: string, difference: ShapeDifference): st
   switch (difference.kind) {
     case 'presence-change':
       return difference.before === undefined
-        ? `${where} mới xuất hiện (${difference.after})`
-        : `${where} biến mất (trước là ${difference.before})`
+        ? `${where} newly appeared (${difference.after})`
+        : `${where} disappeared (previously ${difference.before})`
     case 'nullability-change':
-      return `${where} trở thành nullable: ${difference.before} → ${difference.after}`
+      return `${where} became nullable: ${difference.before} → ${difference.after}`
     case 'type-change':
-      return `${where} đổi kiểu: ${difference.before} → ${difference.after}`
+      return `${where} changed type: ${difference.before} → ${difference.after}`
     default:
-      return `${where} đổi cấu trúc: ${difference.before} → ${difference.after}`
+      return `${where} changed structure: ${difference.before} → ${difference.after}`
   }
 }
 
@@ -511,12 +511,12 @@ function diffConsole(
         target: 'console',
         label: 'console',
         field: 'error',
-        summary: `console error mới: ${entry.message}`,
+        summary: `new console error: ${entry.message}`,
         after: entry.message,
         offsetMs: entry.offsetMs,
         proximityMs: proximityOf(entry.offsetMs),
         confidence: 'high',
-        reason: 'phía chạy được không có console error nào; đây là bất thường đầu tiên theo thời gian',
+        reason: 'the working side has no console errors at all; this is the first anomaly in time order',
       }),
     )
   } else if (beforeErrors.length > 0 && afterErrors.length === 0) {
@@ -528,10 +528,10 @@ function diffConsole(
         target: 'console',
         label: 'console',
         field: 'error',
-        summary: 'console error ở phía chạy được đã biến mất',
+        summary: 'the console error on the working side disappeared',
         before: beforeErrors[0],
         confidence: 'medium',
-        reason: 'lỗi biến mất thường là tin tốt, nhưng cũng có thể do code path không còn chạy tới',
+        reason: 'a disappearing error is usually good news, but it can also mean a code path is no longer reached',
       }),
     )
   } else if (beforeErrors.length > 0 && afterErrors.length > 0) {
@@ -546,11 +546,11 @@ function diffConsole(
           target: 'console',
           label: 'console',
           field: 'error',
-          summary: `nội dung console error đổi: ${changed[0]}`,
+          summary: `console error text changed: ${changed[0]}`,
           before: beforeErrors[0],
           after: changed[0],
           confidence: 'low',
-          reason: 'cả hai phía đều có error; chỉ nội dung khác nên tín hiệu yếu',
+          reason: 'both sides have an error; only the text differs, so this signal is weak',
         }),
       )
     }
@@ -568,12 +568,12 @@ function diffConsole(
         target: 'console',
         label: 'console',
         field: 'warn',
-        summary: `console warn mới: ${entry.message}`,
+        summary: `new console warn: ${entry.message}`,
         after: entry.message,
         offsetMs: entry.offsetMs,
         proximityMs: proximityOf(entry.offsetMs),
         confidence: 'medium',
-        reason: 'warn mới xuất hiện cùng lúc với lỗi — thường là hệ quả',
+        reason: 'the new warn appears at the same time as the error — usually a consequence',
       }),
     )
   }
@@ -604,10 +604,10 @@ function diffState(
           target: 'state',
           label: area,
           field: `${area}.${key}`,
-          summary: `${key} biến mất khỏi ${area}`,
+          summary: `${key} disappeared from ${area}`,
           before: beforeByKey.get(key)?.valueType,
           confidence: 'high',
-          reason: 'sự hiện diện của key là cấu trúc, quan sát được kể cả khi value bị ẩn',
+          reason: 'key presence is structure, observable even when the value is hidden',
         }),
       )
     }
@@ -622,10 +622,10 @@ function diffState(
           target: 'state',
           label: area,
           field: `${area}.${key}`,
-          summary: `${key} mới xuất hiện trong ${area}`,
+          summary: `${key} newly appeared in ${area}`,
           after: afterByKey.get(key)?.valueType,
           confidence: 'high',
-          reason: 'sự hiện diện của key là cấu trúc, quan sát được kể cả khi value bị ẩn',
+          reason: 'key presence is structure, observable even when the value is hidden',
         }),
       )
     }
@@ -649,11 +649,11 @@ function diffState(
             target: 'state',
             label: area,
             field,
-            summary: `${key} đổi kiểu: ${before.valueType} → ${after.valueType}`,
+            summary: `${key} changed type: ${before.valueType} → ${after.valueType}`,
             before: before.valueType,
             after: after.valueType,
             confidence: 'high',
-            reason: 'kiểu của value là cấu trúc, không phải dữ liệu người dùng',
+            reason: 'the value type is structure, not user data',
           }),
         )
         continue
@@ -662,9 +662,9 @@ function diffState(
       if (before.value === undefined || after.value === undefined) continue
       if (JSON.stringify(before.value) === JSON.stringify(after.value)) continue
 
-      // Boolean chỉ có 1 bit thông tin và không thể là PII, nên một feature flag
-      // lật false→true là vừa riêng tư vừa nhiều tín hiệu. String/số thì ngược
-      // lại: rất dễ là id, timestamp, token — ẩn mặc định.
+      // A boolean is 1 bit of information and cannot be PII, so a feature flag
+      // flipping false→true is both private and high-signal. Strings/numbers are
+      // the opposite: likely an id, timestamp or token — hidden by default.
       const isBoolean = before.valueType === 'boolean' && after.valueType === 'boolean'
       signals.push(
         makeSignal({
@@ -675,14 +675,14 @@ function diffState(
           label: area,
           field,
           summary: isBoolean
-            ? `${key} lật ${String(before.value)} → ${String(after.value)}`
-            : `${key} đổi giá trị`,
+            ? `${key} flipped ${String(before.value)} → ${String(after.value)}`
+            : `${key} changed value`,
           before: before.value,
           after: after.value,
           confidence: isBoolean ? 'medium' : 'low',
           reason: isBoolean
-            ? 'value boolean không thể là PII, nên hiện mặc định'
-            : 'value dạng chuỗi/số dễ là id hoặc timestamp; ẩn mặc định để tránh nhiễu',
+            ? 'a boolean value cannot be PII, so it is shown by default'
+            : 'a string/number value is likely an id or timestamp; hidden by default to avoid noise',
         }),
       )
     }
@@ -701,9 +701,9 @@ function diffState(
         target: 'state',
         label: 'cookieNames',
         field: `cookieNames.${name}`,
-        summary: `cookie ${name} không còn được set`,
+        summary: `cookie ${name} is no longer set`,
         confidence: 'high',
-        reason: 'cookie mất đi là nguyên nhân phổ biến của lỗi phiên đăng nhập',
+        reason: 'a missing cookie is a common cause of broken login sessions',
       }),
     )
   }
@@ -717,9 +717,9 @@ function diffState(
         target: 'state',
         label: 'cookieNames',
         field: `cookieNames.${name}`,
-        summary: `cookie ${name} mới được set`,
+        summary: `cookie ${name} is newly set`,
         confidence: 'high',
-        reason: 'cookie mới xuất hiện — chỉ tên, không bao giờ có value',
+        reason: 'a new cookie appeared — name only, never a value',
       }),
     )
   }
@@ -759,8 +759,8 @@ function diffEnvironment(baseline: CapsuleArchive, candidate: CapsuleArchive): D
     if (left === undefined || right === undefined) continue
     if (left === right) continue
 
-    // `build` khác nhau nghĩa là bug có thể chỉ nằm ở một deploy — đó là nguyên
-    // nhân gốc. Các field môi trường khác chỉ là ngữ cảnh.
+    // A different `build` means the bug may exist in only one deploy — that is a
+    // root cause. The other environment fields are only context.
     const isBuild = field === 'build'
     signals.push(
       makeSignal({
@@ -770,13 +770,13 @@ function diffEnvironment(baseline: CapsuleArchive, candidate: CapsuleArchive): D
         target: 'environment',
         label: 'environment',
         field,
-        summary: isBuild ? `deploy khác nhau: ${String(left)} → ${String(right)}` : `${field} khác nhau`,
+        summary: isBuild ? `different deploy: ${String(left)} → ${String(right)}` : `${field} differs`,
         before: left,
         after: right,
         confidence: isBuild ? 'medium' : 'low',
         reason: isBuild
-          ? 'hai capsule chạy trên build khác nhau, nên khác biệt có thể không phải do bug'
-          : 'ngữ cảnh môi trường, hầu như không bao giờ là nguyên nhân',
+          ? 'the two capsules run on different builds, so the difference may not be caused by the bug'
+          : 'environment context, almost never the cause',
       }),
     )
   }
@@ -803,9 +803,9 @@ function diffActions(baseline: CapsuleArchive, candidate: CapsuleArchive): DiffS
         defaultVisibility: 'shown',
         target: 'actions',
         label: key,
-        summary: `chỉ phía hỏng có thao tác trên ${key}`,
+        summary: `only the broken side has an action on ${key}`,
         confidence: 'low',
-        reason: 'thao tác thừa thường là hệ quả của lỗi, không phải nguyên nhân',
+        reason: 'an extra action is usually a consequence of the error, not the cause',
       }),
     )
   }
@@ -818,9 +818,9 @@ function diffActions(baseline: CapsuleArchive, candidate: CapsuleArchive): DiffS
         defaultVisibility: 'shown',
         target: 'actions',
         label: key,
-        summary: `chỉ phía chạy được có thao tác trên ${key}`,
+        summary: `only the working side has an action on ${key}`,
         confidence: 'low',
-        reason: 'thao tác bị thiếu ở phía hỏng',
+        reason: 'the action is missing on the broken side',
       }),
     )
   }
@@ -853,8 +853,8 @@ export function diffCapsules(
   all.sort((left, right) => {
     if (left.weight !== right.weight) return right.weight - left.weight
 
-    // Gần bất thường đầu tiên hơn thì lên trước: hệ quả luôn xảy ra sau
-    // nguyên nhân, nên khoảng cách này tự nó đã là một tín hiệu.
+    // Closer to the first anomaly comes first: a consequence always happens
+    // after its cause, so this distance is itself a signal.
     const leftDistance = left.proximityMs ?? Number.POSITIVE_INFINITY
     const rightDistance = right.proximityMs ?? Number.POSITIVE_INFINITY
     if (leftDistance !== rightDistance) return leftDistance - rightDistance
@@ -873,7 +873,7 @@ export function diffCapsules(
 
   for (const signal of all) {
     if (suppressedIds.has(signal.id)) {
-      suppressed.push({ id: signal.id, reason: 'người dùng đã bỏ qua' })
+      suppressed.push({ id: signal.id, reason: 'dismissed by the user' })
       continue
     }
     kept.push(signal)

@@ -17,4 +17,4 @@ for (const fixture of FIXTURES) {
   console.log(`wrote  fixtures/${fixture.name}.bugcap  ${bytes.byteLength} byte`)
 }
 
-console.log(`\n${FIXTURES.length} fixture, tổng ${total} byte`)
+console.log(`\n${FIXTURES.length} fixture, ${total} byte total`)

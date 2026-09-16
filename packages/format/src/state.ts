@@ -1,10 +1,10 @@
 import * as z from 'zod'
 
 /**
- * Type của một storage value. **Chỉ type, không value.**
+ * Type of a storage value. **Type only, never the value.**
  *
- * Cùng nguyên tắc với `bodyShape`: type không phải PII, nhưng nó cho phép
- * phát hiện `boolean → string` mà không cần đọc giá trị.
+ * Same principle as `bodyShape`: a type is not PII, but it makes it possible
+ * to detect `boolean → string` without reading the value.
  */
 export const ValueTypeSchema = z.enum([
   'string',
@@ -28,11 +28,11 @@ export const StateFileSchema = z.object({
   localStorage: z.array(StorageEntrySchema),
   sessionStorage: z.array(StorageEntrySchema),
   /**
-   * Tên cookie. **Value cookie không bao giờ được lưu**, và `Set-Cookie`
-   * nằm trong hard-deny list.
+   * Cookie names. **Cookie values are never stored**, and `Set-Cookie`
+   * is on the hard-deny list.
    *
-   * Tên cookie được giữ vì bug auth phổ biến nhất là "session cookie không
-   * được set" — đó là thay đổi về *sự hiện diện của key*, không phải value.
+   * Cookie names are kept because the most common auth bug is "the session cookie
+   * was not set" — that is a change in the *presence of the key*, not in the value.
    */
   cookieNames: z.array(z.string()),
 })

@@ -24,9 +24,10 @@ export interface ValidationResult<T> {
 
 export interface ValidateOptions {
   /**
-   * `strict` là nghĩa vụ của **producer**: field lạ là lỗi, để bắt typo ngay
-   * khi tạo capsule. Reader mặc định KHÔNG strict, vì spec §21 bắt nó bỏ qua
-   * field không nhận biết để giữ forward compatibility.
+   * `strict` is the **producer's** obligation: an unknown field is an error, so
+   * typos are caught at capsule creation time. The reader is NOT strict by
+   * default, because spec §21 requires it to ignore unrecognized fields in order
+   * to preserve forward compatibility.
    */
   strict?: boolean
 }
@@ -89,7 +90,7 @@ function collectUnknownKeys(
       out.push({
         path: childPath,
         code: 'unknown-field',
-        message: `field "${childPath}" không thuộc format v0.1`,
+        message: `field "${childPath}" is not part of format v0.1`,
       })
       continue
     }
@@ -111,7 +112,7 @@ function manifestInvariants(manifest: Manifest): ValidationIssue[] {
     issues.push({
       path: 'capture.endedAt',
       code: 'capture-window-invalid',
-      message: 'capture.endedAt xảy ra trước capture.startedAt',
+      message: 'capture.endedAt occurs before capture.startedAt',
     })
   }
 
@@ -128,7 +129,7 @@ export function validateManifest(
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
     return {
       ok: false,
-      issues: [{ path: '', code: 'not-an-object', message: 'manifest phải là một object' }],
+      issues: [{ path: '', code: 'not-an-object', message: 'manifest must be an object' }],
       warnings,
     }
   }
@@ -195,7 +196,7 @@ function bodyInvariants(network: NetworkFile): ValidationIssue[] {
         issues.push({
           path: `network.requests[${index}].${side}.body`,
           code: 'body-present-but-not-captured',
-          message: `${side}.bodyCaptured=false nhưng ${side}.body vẫn có mặt`,
+          message: `${side}.bodyCaptured=false but ${side}.body is still present`,
         })
       }
     }
@@ -212,7 +213,7 @@ function actionInvariants(actions: ActionsFile): ValidationIssue[] {
       issues.push({
         path: `actions.events[${index}].metadata.valueCaptured`,
         code: 'password-value-captured',
-        message: 'input type=password không bao giờ được capture value, không có override',
+        message: 'input type=password must never capture a value, with no override',
       })
     }
   })
@@ -221,9 +222,9 @@ function actionInvariants(actions: ActionsFile): ValidationIssue[] {
 }
 
 /**
- * Biến `privacy.json` từ một lời tuyên bố thành một lời tuyên bố **được kiểm
- * chứng**. Nếu policy nói "không capture body" mà body vẫn có mặt, capsule
- * không hợp lệ — bất kể producer khai gì.
+ * Turns `privacy.json` from a claim into a **verified** claim. If the policy says
+ * "do not capture bodies" and a body is nevertheless present, the capsule is
+ * invalid — whatever the producer declares.
  */
 function privacyClaimInvariants(parts: {
   network?: NetworkFile
@@ -243,7 +244,7 @@ function privacyClaimInvariants(parts: {
       if (!policy.bodyShapes && captured.bodyShape !== undefined) {
         violation(
           `network.requests[${index}].${side}.bodyShape`,
-          `policy.bodyShapes=false nhưng ${side}.bodyShape có mặt`,
+          `policy.bodyShapes=false but ${side}.bodyShape is present`,
         )
       }
 
@@ -252,7 +253,7 @@ function privacyClaimInvariants(parts: {
       if (!bodiesAllowed && captured.body !== undefined) {
         violation(
           `network.requests[${index}].${side}.body`,
-          `policy.${side === 'request' ? 'requestBodies' : 'responseBodies'}=false nhưng ${side}.body có mặt`,
+          `policy.${side === 'request' ? 'requestBodies' : 'responseBodies'}=false but ${side}.body is present`,
         )
       }
     }
@@ -262,7 +263,7 @@ function privacyClaimInvariants(parts: {
         if (value !== REDACTED) {
           violation(
             `network.requests[${index}].url.query.${key}`,
-            `policy.queryValues=false nhưng query "${key}" chưa được redact`,
+            `policy.queryValues=false but query "${key}" was not redacted`,
           )
         }
       }
@@ -275,7 +276,7 @@ function privacyClaimInvariants(parts: {
         if (entry.value !== undefined) {
           violation(
             `state.${area}[${index}].value`,
-            `policy.storageValues=false nhưng value của "${entry.key}" có mặt`,
+            `policy.storageValues=false but the value of "${entry.key}" is present`,
           )
         }
       })

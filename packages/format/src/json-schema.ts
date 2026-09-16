@@ -10,17 +10,17 @@ import { StateFileSchema } from './state'
 export type JsonSchemaDocument = Record<string, unknown>
 
 /**
- * Zod là nguồn sự thật duy nhất. JSON Schema được **sinh ra** từ đây bằng
- * `z.toJSONSchema()` và commit vào `spec/0.1/` để third party dùng.
+ * Zod is the single source of truth. The JSON Schema is **generated** from it
+ * by `z.toJSONSchema()` and committed to `spec/0.1/` for third parties to use.
  *
- * Nhờ vậy TypeScript types, validator và JSON Schema không thể lệch nhau:
- * chúng cùng đọc từ một định nghĩa.
+ * This way the TypeScript types, the validator and the JSON Schema cannot
+ * drift apart: they all read from a single definition.
  *
- * Không dùng `z.date()`, `z.transform()`, `z.custom()` hay bất kỳ kiểu nào
- * `z.toJSONSchema` không biểu diễn được, vì như vậy JSON Schema sẽ mất thông
- * tin và third-party implementer không còn contract để bám vào.
+ * Do not use `z.date()`, `z.transform()`, `z.custom()` or any type that
+ * `z.toJSONSchema` cannot express, since the JSON Schema would then lose
+ * information and third-party implementers would have no contract to rely on.
  *
- * Danh sách này khớp đúng bộ file trong spec §24.
+ * This list matches exactly the set of files in spec §24.
  */
 export const SCHEMA_REGISTRY: Record<string, z.ZodType> = {
   'manifest.schema.json': ManifestSchema,
@@ -33,13 +33,13 @@ export const SCHEMA_REGISTRY: Record<string, z.ZodType> = {
 }
 
 /**
- * zod phát `additionalProperties: false` cho mọi `z.object()`. Điều đó **mâu
- * thuẫn trực tiếp với spec §21**: reader MUST ignore field không nhận biết, nên
- * một capsule do version tương lai tạo ra vẫn phải validate được.
+ * zod emits `additionalProperties: false` for every `z.object()`. That
+ * **directly contradicts spec §21**: a reader MUST ignore fields it does not
+ * recognize, so a capsule produced by a future version must still validate.
  *
- * Ta nới thành `true` trong JSON Schema công bố. Việc kiểm tra chặt là nghĩa vụ
- * của *producer* (xem schema strict riêng trong validator), còn contract công
- * bố phải permissive — nếu không, chính spec tự phá forward compatibility.
+ * We relax it to `true` in the published JSON Schema. Strict checking is the *producer's*
+ * obligation (see the separate strict schema in the validator), while the published contract
+ * must be permissive — otherwise the spec itself breaks forward compatibility.
  */
 function relaxAdditionalProperties(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(relaxAdditionalProperties)

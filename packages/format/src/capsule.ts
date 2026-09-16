@@ -14,8 +14,8 @@ import {
 } from './validate'
 
 /**
- * Tên entry cố định trong archive. Đây là một phần của format — đổi tên là
- * breaking change.
+ * Fixed entry names inside the archive. These are part of the format — renaming
+ * one is a breaking change.
  */
 export const CAPSULE_ENTRIES = {
   manifest: 'manifest.json',
@@ -40,11 +40,11 @@ const OPTIONAL_FILE_KEYS = [
 const CONTAINER_KEYS: readonly string[] = ['manifest', ...OPTIONAL_FILE_KEYS]
 
 export interface CapsuleLimits {
-  /** Giới hạn kích thước file .bugcap trên đĩa. */
+  /** Size limit of the .bugcap file on disk. */
   maxCapsuleBytes: number
   /**
-   * Giới hạn tổng dung lượng **sau khi giải nén**. Đây là hàng rào zip bomb:
-   * được kiểm tra từ central directory TRƯỚC khi giải nén byte nào.
+   * Limit on the total size **after decompression**. This is the zip bomb
+   * barrier: checked from the central directory BEFORE any bytes are decompressed.
    */
   maxTotalUncompressedBytes: number
 }
@@ -69,14 +69,14 @@ export interface ReadCapsuleOptions {
   limits?: Partial<CapsuleLimits>
 }
 
-/** Producer ghi ra capsule không hợp lệ là lỗi lập trình, không phải lỗi dữ liệu. */
+/** A producer writing an invalid capsule is a programming error, not a data error. */
 export class CapsuleWriteError extends Error {
   readonly issues: ValidationIssue[]
 
   constructor(issues: ValidationIssue[]) {
     super(
-      `capsule không hợp lệ: ${issues
-        .map((issue) => `${issue.code}${issue.path === '' ? '' : ` tại ${issue.path}`}`)
+      `invalid capsule: ${issues
+        .map((issue) => `${issue.code}${issue.path === '' ? '' : ` at ${issue.path}`}`)
         .join('; ')}`,
     )
     this.name = 'CapsuleWriteError'
@@ -102,7 +102,7 @@ export function writeCapsule(archive: CapsuleArchive): Uint8Array {
       unknownKeys.map((key) => ({
         path: key,
         code: 'unknown-field',
-        message: `field "${key}" không thuộc CapsuleArchive`,
+        message: `field "${key}" is not part of CapsuleArchive`,
       })),
     )
   }
@@ -112,8 +112,8 @@ export function writeCapsule(archive: CapsuleArchive): Uint8Array {
     throw new CapsuleWriteError(validation.issues)
   }
 
-  // `files` luôn được TÍNH LẠI từ entry thực có, không nhận từ caller — nếu
-  // nhận, manifest có thể khai một file không tồn tại.
+  // `files` is always RECOMPUTED from the entries actually present, never taken
+  // from the caller — if it were, the manifest could declare a file that does not exist.
   const files: ManifestFiles = {}
   if (archive.environment !== undefined) files.environment = CAPSULE_ENTRIES.environment
   if (archive.actions !== undefined) files.actions = CAPSULE_ENTRIES.actions
@@ -123,7 +123,7 @@ export function writeCapsule(archive: CapsuleArchive): Uint8Array {
   if (archive.privacy !== undefined) files.privacy = CAPSULE_ENTRIES.privacy
   if (archive.screenshot !== undefined) files.screenshot = CAPSULE_ENTRIES.screenshot
 
-  // mtime lấy từ createdAt để cùng input cho ra cùng bytes — fixture tái lập được.
+  // mtime is taken from createdAt so the same input yields the same bytes — reproducible fixtures.
   const mtime = new Date(archive.manifest.createdAt)
   const jsonOptions: ZipOptions = { level: 6, mtime }
   const storedOptions: ZipOptions = { level: 0, mtime }
@@ -141,7 +141,7 @@ export function writeCapsule(archive: CapsuleArchive): Uint8Array {
   if (archive.state !== undefined) addJson(CAPSULE_ENTRIES.state, archive.state)
   if (archive.privacy !== undefined) addJson(CAPSULE_ENTRIES.privacy, archive.privacy)
 
-  // PNG đã nén sẵn: deflate lại chỉ làm file to thêm.
+  // PNG is already compressed: deflating it again only makes the file larger.
   if (archive.screenshot !== undefined) {
     entries[CAPSULE_ENTRIES.screenshot] = [archive.screenshot, storedOptions]
   }
@@ -150,11 +150,11 @@ export function writeCapsule(archive: CapsuleArchive): Uint8Array {
 }
 
 /**
- * Đường dẫn entry an toàn.
+ * Safe entry path.
  *
- * Capsule là **untrusted input**: nó đến từ người khác qua chat hoặc email.
- * Một entry `../../.ssh/authorized_keys` hoặc `/etc/passwd` phải bị từ chối
- * trước khi bất cứ thứ gì được ghi ra đĩa.
+ * The capsule is **untrusted input**: it arrives from someone else over chat or
+ * email. An entry such as `../../.ssh/authorized_keys` or `/etc/passwd` must be
+ * rejected before anything is written to disk.
  */
 function isSafeEntryPath(name: string): boolean {
   if (name === '') return false
@@ -183,7 +183,7 @@ export function readCapsule(
   if (bytes.byteLength < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
     return {
       ok: false,
-      issues: [{ path: '', code: 'not-a-zip', message: 'bytes không bắt đầu bằng chữ ký zip' }],
+      issues: [{ path: '', code: 'not-a-zip', message: 'bytes do not start with the zip signature' }],
       warnings,
     }
   }
@@ -195,14 +195,14 @@ export function readCapsule(
         {
           path: '',
           code: 'capsule-too-large',
-          message: `capsule ${bytes.byteLength} byte vượt giới hạn ${limits.maxCapsuleBytes} byte`,
+          message: `capsule of ${bytes.byteLength} bytes exceeds the ${limits.maxCapsuleBytes}-byte limit`,
         },
       ],
       warnings,
     }
   }
 
-  // Lượt 1: chỉ đọc central directory, KHÔNG giải nén entry nào.
+  // Pass 1: read only the central directory, decompressing NO entry.
   const directory: DirectoryEntry[] = []
   try {
     unzipSync(bytes, {
@@ -215,7 +215,7 @@ export function readCapsule(
     return {
       ok: false,
       issues: [
-        { path: '', code: 'not-a-zip', message: `không đọc được zip: ${describeError(error)}` },
+        { path: '', code: 'not-a-zip', message: `cannot read zip: ${describeError(error)}` },
       ],
       warnings,
     }
@@ -226,7 +226,7 @@ export function readCapsule(
       issues.push({
         path: entry.name,
         code: 'unsafe-entry-path',
-        message: `entry "${entry.name}" có đường dẫn không an toàn và bị từ chối`,
+        message: `entry "${entry.name}" has an unsafe path and was rejected`,
       })
     }
   }
@@ -240,14 +240,14 @@ export function readCapsule(
         {
           path: '',
           code: 'capsule-too-large',
-          message: `tổng dung lượng giải nén ${totalOriginal} byte vượt giới hạn ${limits.maxTotalUncompressedBytes} byte`,
+          message: `total decompressed size ${totalOriginal} bytes exceeds the ${limits.maxTotalUncompressedBytes}-byte limit`,
         },
       ],
       warnings,
     }
   }
 
-  // Lượt 2: chỉ giải nén entry thuộc format.
+  // Pass 2: decompress only the entries that belong to the format.
   const wanted = new Set<string>(Object.values(CAPSULE_ENTRIES))
   let extracted: Unzipped
   try {
@@ -256,7 +256,7 @@ export function readCapsule(
     return {
       ok: false,
       issues: [
-        { path: '', code: 'not-a-zip', message: `không giải nén được: ${describeError(error)}` },
+        { path: '', code: 'not-a-zip', message: `cannot decompress: ${describeError(error)}` },
       ],
       warnings,
     }
@@ -265,7 +265,7 @@ export function readCapsule(
   for (const entry of directory) {
     if (entry.name.endsWith('/')) continue
     if (!wanted.has(entry.name)) {
-      warnings.push(`bỏ qua entry không thuộc format v0.1: ${entry.name}`)
+      warnings.push(`ignoring entry not part of format v0.1: ${entry.name}`)
     }
   }
 
@@ -279,7 +279,7 @@ export function readCapsule(
       jsonIssues.push({
         path: name,
         code: 'invalid-json',
-        message: `${name} không phải JSON hợp lệ: ${describeError(error)}`,
+        message: `${name} is not valid JSON: ${describeError(error)}`,
       })
       return undefined
     }
@@ -295,7 +295,7 @@ export function readCapsule(
         {
           path: CAPSULE_ENTRIES.manifest,
           code: 'manifest-missing',
-          message: 'capsule thiếu manifest.json',
+          message: 'capsule is missing manifest.json',
         },
       ],
       warnings,

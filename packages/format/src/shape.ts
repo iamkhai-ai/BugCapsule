@@ -1,11 +1,11 @@
 import * as z from 'zod'
 
 /**
- * Cây type tối giản của một JSON value. **Không chứa value.**
+ * Minimal type tree of a JSON value. **Contains no values.**
  *
- * Đây là nguồn của hầu hết signal diff có giá trị (type-change,
- * nullability-change, presence-change) mà không cần đọc dữ liệu người dùng.
- * Shape được suy ra ngay trong page context; chỉ shape đi qua bridge.
+ * This is the source of most of the valuable diff signal (type-change,
+ * nullability-change, presence-change) without reading any user data.
+ * The shape is inferred inside the page context; only the shape crosses the bridge.
  */
 export type BodyShape =
   | { type: 'object'; properties: Record<string, BodyShape> }
@@ -40,7 +40,7 @@ export function isArrayShape(shape: BodyShape): shape is { type: 'array'; items:
   return 'type' in shape && shape.type === 'array'
 }
 
-/** Suy ra shape từ một value. Đây là hàm DUY NHẤT được phép nhìn thấy value. */
+/** Infers a shape from a value. This is the ONLY function allowed to see values. */
 export function valueToBodyShape(value: unknown): BodyShape {
   if (value === null) return { type: 'null' }
 
@@ -69,11 +69,11 @@ export function valueToBodyShape(value: unknown): BodyShape {
 }
 
 /**
- * Hợp nhất nhiều shape thành một.
+ * Unifies several shapes into one.
  *
- * Object được **merge key** thay vì gộp thành `anyOf`: một array phần tử mà
- * phần tử nào cũng thiếu một key khác nhau là chuyện bình thường, biến nó
- * thành union sẽ tạo ra schema-shape-change giả.
+ * Objects are **merged by key** rather than collapsed into `anyOf`: an array of
+ * elements where each element is missing a different key is unremarkable, and
+ * turning it into a union would produce a fake schema-shape-change.
  */
 export function unifyBodyShapes(shapes: BodyShape[]): BodyShape {
   if (shapes.length === 0) return { type: 'unknown' }
@@ -109,7 +109,7 @@ export function unifyBodyShapes(shapes: BodyShape[]): BodyShape {
   return { anyOf: sorted }
 }
 
-/** Khoá canonical của shape — deterministic, dùng để so sánh và khử trùng. */
+/** Canonical key of a shape — deterministic, used for comparison and deduplication. */
 export function canonicalShapeKey(shape: BodyShape): string {
   return JSON.stringify(canonicalizeShape(shape))
 }

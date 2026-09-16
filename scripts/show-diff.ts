@@ -7,8 +7,8 @@ function load(name: string): CapsuleArchive {
   const result = readCapsule(readFileSync(join(process.cwd(), 'fixtures', `${name}.bugcap`)))
   for (const warning of result.warnings) console.warn(`  warning: ${warning}`)
   if (!result.ok || result.value === undefined) {
-    console.error(`Không đọc được ${name}.bugcap:`)
-    for (const issue of result.issues) console.error(`  ${issue.code} tại ${issue.path}: ${issue.message}`)
+    console.error(`Could not read ${name}.bugcap:`)
+    for (const issue of result.issues) console.error(`  ${issue.code} at ${issue.path}: ${issue.message}`)
     process.exit(1)
   }
   return result.value

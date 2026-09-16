@@ -1,9 +1,9 @@
 /**
- * Hợp đồng tương thích giữa `formatVersion` của capsule và reader.
+ * Compatibility contract between a capsule's `formatVersion` and the reader.
  *
- * spec §23 yêu cầu điều này phải **test được**, không phải "best effort" —
- * một format cho third party implement mà compatibility không kiểm chứng được
- * thì không phải contract.
+ * spec §23 requires this to be **testable**, not "best effort" — a format for
+ * third parties to implement whose compatibility cannot be verified is not a
+ * contract.
  */
 
 export const SUPPORTED_FORMAT_VERSION = '0.1.0'
@@ -24,7 +24,7 @@ export function checkCompatibility(capsuleVersion: string): CompatResult {
   if (match === null) {
     return {
       level: 'unsupported',
-      reason: `formatVersion "${capsuleVersion}" không phải semver MAJOR.MINOR.PATCH`,
+      reason: `formatVersion "${capsuleVersion}" is not semver MAJOR.MINOR.PATCH`,
     }
   }
 
@@ -34,16 +34,16 @@ export function checkCompatibility(capsuleVersion: string): CompatResult {
   if (major !== SUPPORTED.major) {
     return {
       level: 'unsupported',
-      reason: `formatVersion MAJOR ${major} khác MAJOR được hỗ trợ ${SUPPORTED.major}; reader không đoán ngược`,
+      reason: `formatVersion MAJOR ${major} differs from the supported MAJOR ${SUPPORTED.major}; the reader does not guess backwards`,
     }
   }
 
   if (minor > SUPPORTED.minor) {
     return {
       level: 'forward-minor',
-      reason: `capsule dùng MINOR ${minor} cao hơn ${SUPPORTED.minor}; field không nhận biết sẽ bị bỏ qua`,
+      reason: `capsule uses MINOR ${minor} higher than ${SUPPORTED.minor}; unrecognized fields will be ignored`,
     }
   }
 
-  return { level: 'supported', reason: `tương thích với format ${SUPPORTED_FORMAT_VERSION}` }
+  return { level: 'supported', reason: `compatible with format ${SUPPORTED_FORMAT_VERSION}` }
 }

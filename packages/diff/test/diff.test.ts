@@ -82,10 +82,10 @@ function networkOf(...requests: NetworkRequest[]): { requests: NetworkRequest[] 
   return { requests }
 }
 
-describe('diffCapsules — cặp fixture checkout', () => {
+describe('diffCapsules — checkout fixture pair', () => {
   const diff = diffCapsules(buildCheckoutWorking(), buildCheckoutBroken())
 
-  it('báo status-class-change trên POST /api/checkout', () => {
+  it('reports status-class-change on POST /api/checkout', () => {
     const signal = diff.signals.find((s) => s.kind === 'status-class-change')
     expect(signal?.label).toBe('POST /api/checkout')
     expect(signal?.before).toBe(201)
@@ -93,7 +93,7 @@ describe('diffCapsules — cặp fixture checkout', () => {
     expect(signal?.weight).toBe(3)
   })
 
-  it('báo presence-change cho từng field biến mất và xuất hiện', () => {
+  it('reports presence-change for every field that disappears and appears', () => {
     const removed = diff.signals.find(
       (s) => s.kind === 'presence-change' && s.field === 'response.orderId',
     )
@@ -106,18 +106,18 @@ describe('diffCapsules — cặp fixture checkout', () => {
     expect(added?.after).toBe('string')
   })
 
-  it('báo console-error-appeared', () => {
+  it('reports console-error-appeared', () => {
     const signal = diff.signals.find((s) => s.kind === 'console-error-appeared')
     expect(signal?.weight).toBe(3)
     expect(signal?.after).toContain('500 Internal Server Error')
   })
 
-  it('báo request-only-in-broken cho lần retry có thêm query key', () => {
+  it('reports request-only-in-broken for the retry that adds a query key', () => {
     const signal = diff.signals.find((s) => s.kind === 'request-only-in-broken')
     expect(signal?.matchKey).toContain('retry')
   })
 
-  it('feature flag boolean lật false→true là tín hiệu HIỆN, không bị ẩn', () => {
+  it('a boolean feature flag flipped false→true is a SHOWN signal, not hidden', () => {
     const signal = diff.signals.find(
       (s) => s.kind === 'state-value-changed' && s.field === 'localStorage.feature_new_checkout',
     )
@@ -126,13 +126,13 @@ describe('diffCapsules — cặp fixture checkout', () => {
     expect(signal?.defaultVisibility).toBe('shown')
   })
 
-  it('sắp xếp theo weight giảm dần, không tăng ở bất kỳ đâu', () => {
+  it('sorts by weight descending, never increasing anywhere', () => {
     const weights = diff.signals.map((s) => s.weight)
     const sorted = [...weights].sort((a, b) => b - a)
     expect(weights).toEqual(sorted)
   })
 
-  it('nguyên nhân gốc đứng trước MỌI hệ quả cùng weight, không chỉ trước một cái', () => {
+  it('the root cause comes before EVERY same-weight consequence, not just one of them', () => {
     const rootCause = diff.signals.findIndex((s) => s.kind === 'status-class-change')
     expect(rootCause).toBeGreaterThanOrEqual(0)
 
@@ -143,11 +143,11 @@ describe('diffCapsules — cặp fixture checkout', () => {
 
     expect(symptomIndices.length).toBeGreaterThan(0)
     for (const index of symptomIndices) {
-      expect(rootCause, `status-class-change phải đứng trước presence-change ở vị trí ${index}`).toBeLessThan(index)
+      expect(rootCause, `status-class-change must come before presence-change at index ${index}`).toBeLessThan(index)
     }
   })
 
-  it('mọi signal đều mang lý do và độ tin cậy — trust budget', () => {
+  it('every signal carries a reason and a confidence — trust budget', () => {
     for (const signal of diff.signals) {
       expect(signal.reason.length, signal.id).toBeGreaterThan(0)
       expect(['high', 'medium', 'low']).toContain(signal.confidence)
@@ -155,8 +155,8 @@ describe('diffCapsules — cặp fixture checkout', () => {
   })
 })
 
-describe('diffCapsules — quy tắc phân loại', () => {
-  it('string → string|null là nullability-change, không phải type-change', () => {
+describe('diffCapsules — classification rules', () => {
+  it('string → string|null is a nullability-change, not a type-change', () => {
     const before = capsule({
       network: networkOf(request({ pathname: '/a', responseShape: { type: 'object', properties: { a: { type: 'string' } } } })),
     })
@@ -176,7 +176,7 @@ describe('diffCapsules — quy tắc phân loại', () => {
     expect(diff.signals.find((s) => s.field === 'response.a')?.kind).toBe('nullability-change')
   })
 
-  it('number → string là type-change', () => {
+  it('number → string is a type-change', () => {
     const before = capsule({
       network: networkOf(request({ pathname: '/a', responseShape: { type: 'object', properties: { a: { type: 'number' } } } })),
     })
@@ -188,7 +188,7 @@ describe('diffCapsules — quy tắc phân loại', () => {
     )
   })
 
-  it('duration lệch nhỏ bị đếm là nhiễu, KHÔNG thành signal', () => {
+  it('a small duration difference is counted as noise, NOT emitted as a signal', () => {
     const before = capsule({ network: networkOf(request({ pathname: '/a', durationMs: 100 })) })
     const after = capsule({ network: networkOf(request({ pathname: '/a', durationMs: 150 })) })
 
@@ -197,13 +197,13 @@ describe('diffCapsules — quy tắc phân loại', () => {
     expect(diff.dropped).toContainEqual({ kind: 'duration-noise', count: 1 })
   })
 
-  it('duration lệch lớn thành duration-outlier', () => {
+  it('a large duration difference becomes a duration-outlier', () => {
     const before = capsule({ network: networkOf(request({ pathname: '/a', durationMs: 100 })) })
     const after = capsule({ network: networkOf(request({ pathname: '/a', durationMs: 2000 })) })
     expect(diffCapsules(before, after).signals.some((s) => s.kind === 'duration-outlier')).toBe(true)
   })
 
-  it('drift value dạng string bị ẩn chứ không bị bỏ im lặng', () => {
+  it('a string value drift is hidden rather than dropped silently', () => {
     const stateOf = (value: string): StateFile => ({
       localStorage: [{ key: 'sessionToken', valueCaptured: true, value, valueType: 'string' }],
       sessionStorage: [],
@@ -217,7 +217,7 @@ describe('diffCapsules — quy tắc phân loại', () => {
     expect(hidden?.before).toBe('aaa')
   })
 
-  it('build đổi là tín hiệu nặng, field môi trường khác chỉ là thông tin', () => {
+  it('a build change is a heavy signal, other environment fields are just information', () => {
     const envOf = (build: string, locale: string): Environment => ({
       browser: { name: 'Chrome', version: '128' },
       os: { name: 'Windows' },
@@ -239,19 +239,19 @@ describe('diffCapsules — quy tắc phân loại', () => {
     expect(localeDiff.signals.find((s) => s.field === 'locale')?.weight).toBe(1)
   })
 
-  it('hai capsule giống hệt nhau cho ra diff rỗng', () => {
+  it('two identical capsules produce an empty diff', () => {
     const diff = diffCapsules(buildCheckoutWorking(), buildCheckoutWorking())
     expect(diff.signals).toEqual([])
     expect(diff.hidden).toEqual([])
   })
 
-  it('dropped luôn hiện diện, kể cả khi rỗng — không bao giờ che giấu im lặng', () => {
+  it('dropped is always present, even when empty — nothing is ever hidden silently', () => {
     expect(Array.isArray(diffCapsules(buildCheckoutWorking(), buildCheckoutBroken()).dropped)).toBe(true)
   })
 })
 
 describe('diffCapsules — dismissal', () => {
-  it('signal bị dismiss được chuyển sang suppressed và rời khỏi danh sách hiện', () => {
+  it('a dismissed signal moves to suppressed and leaves the visible list', () => {
     const baseline = buildCheckoutWorking()
     const candidate = buildCheckoutBroken()
     const first = diffCapsules(baseline, candidate)
@@ -259,11 +259,11 @@ describe('diffCapsules — dismissal', () => {
 
     const second = diffCapsules(baseline, candidate, { suppressed: [target.id] })
     expect(second.signals.some((s) => s.id === target.id)).toBe(false)
-    expect(second.suppressed).toContainEqual({ id: target.id, reason: 'người dùng đã bỏ qua' })
+    expect(second.suppressed).toContainEqual({ id: target.id, reason: 'dismissed by the user' })
     expect(second.suppressedCount).toBe(1)
   })
 
-  it('id signal ổn định giữa các lần chạy — nếu không thì dismissal vô nghĩa', () => {
+  it('signal ids are stable across runs — otherwise dismissal is meaningless', () => {
     const a = diffCapsules(buildCheckoutWorking(), buildCheckoutBroken())
     const b = diffCapsules(buildCheckoutWorking(), buildCheckoutBroken())
     expect(a.signals.map((s) => s.id)).toEqual(b.signals.map((s) => s.id))

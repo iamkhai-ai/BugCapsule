@@ -39,8 +39,8 @@ for (const [fileName, schema] of Object.entries(schemas)) {
 
 if (checkOnly) {
   if (drifted > 0) {
-    console.error(`\n${drifted} file lệch. Chạy: pnpm gen:schemas`)
+    console.error(`\n${drifted} file(s) drifted. Run: pnpm gen:schemas`)
     process.exit(1)
   }
-  console.log('\nJSON Schema khớp với nguồn zod.')
+  console.log('\nJSON Schema matches the zod source.')
 }

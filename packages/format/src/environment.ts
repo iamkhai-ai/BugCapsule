@@ -1,11 +1,11 @@
 import * as z from 'zod'
 
 /**
- * Môi trường nơi bug xảy ra.
+ * The environment where the bug occurred.
  *
- * Cố ý **không** fingerprint thiết bị: không GPU, không font list, không
- * hardware ID, không IP. Những thứ đó vừa không cần cho việc reproduce, vừa
- * biến capsule thành một dấu vết nhận dạng.
+ * Deliberately **not** a device fingerprint: no GPU, no font list, no hardware
+ * ID, no IP. Those are neither needed to reproduce the bug nor worth turning the
+ * capsule into an identifying trace.
  */
 export const EnvironmentSchema = z.object({
   browser: z.object({
@@ -26,8 +26,8 @@ export const EnvironmentSchema = z.object({
   network: z.object({ online: z.boolean() }).optional(),
   document: z.object({ visibilityState: z.string() }).optional(),
   /**
-   * Định danh build/deploy nếu app tự expose (`<meta name="build">`,
-   * `window.__BUILD_ID__`, ...). Rất rẻ và trả lời câu hỏi "bug này ở deploy nào".
+   * Build/deploy identifier if the app exposes one (`<meta name="build">`,
+   * `window.__BUILD_ID__`, ...). Very cheap, and it answers "which deploy is this bug on".
    */
   build: z.string().optional(),
 })

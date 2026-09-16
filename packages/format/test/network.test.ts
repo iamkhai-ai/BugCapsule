@@ -32,11 +32,11 @@ const request = {
 const file = { requests: [request] }
 
 describe('NetworkFileSchema', () => {
-  it('chấp nhận record hợp lệ có bodyShape và bodyCaptured=false', () => {
+  it('accepts a valid record with a bodyShape and bodyCaptured=false', () => {
     expect(NetworkFileSchema.safeParse(file).success).toBe(true)
   })
 
-  it('bắt buộc docId và frameId — thiếu là mất khả năng dựng timeline (R1)', () => {
+  it('requires docId and frameId — without them the timeline cannot be reconstructed (R1)', () => {
     const { docId: _docId, ...withoutDocId } = request
     expect(NetworkFileSchema.safeParse({ requests: [withoutDocId] }).success).toBe(false)
 
@@ -44,31 +44,31 @@ describe('NetworkFileSchema', () => {
     expect(NetworkFileSchema.safeParse({ requests: [withoutFrameId] }).success).toBe(false)
   })
 
-  it('bắt buộc seq để thứ tự event deterministic khi trùng offsetMs', () => {
+  it('requires seq so event order is deterministic when offsetMs collides', () => {
     const { seq: _seq, ...withoutSeq } = request
     expect(NetworkFileSchema.safeParse({ requests: [withoutSeq] }).success).toBe(false)
   })
 
-  it('giữ query value không nhạy cảm và chấp nhận nhãn <redacted> (R4)', () => {
+  it('keeps non-sensitive query values and accepts the <redacted> marker (R4)', () => {
     const parsed = NetworkFileSchema.parse(file)
     expect(parsed.requests[0]?.url.query).toEqual({ tab: 'payment', token: '<redacted>' })
   })
 
-  it('bắt buộc bodyCaptured trên cả hai phía — không được để mơ hồ', () => {
+  it('requires bodyCaptured on both sides — no ambiguity allowed', () => {
     const { bodyCaptured: _bodyCaptured, ...request2 } = request.request
     expect(
       NetworkFileSchema.safeParse({ requests: [{ ...request, request: request2 }] }).success,
     ).toBe(false)
   })
 
-  it('từ chối omissionReason không nằm trong danh sách', () => {
+  it('rejects an omissionReason that is not in the list', () => {
     const bad = {
       requests: [{ ...request, response: { ...request.response, omissionReason: 'because' } }],
     }
     expect(NetworkFileSchema.safeParse(bad).success).toBe(false)
   })
 
-  it('từ chối resourceType ngoài fetch/xhr', () => {
+  it('rejects a resourceType outside fetch/xhr', () => {
     expect(
       NetworkFileSchema.safeParse({ requests: [{ ...request, resourceType: 'websocket' }] }).success,
     ).toBe(false)

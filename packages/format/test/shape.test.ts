@@ -8,25 +8,25 @@ import {
 } from '../src/shape'
 
 describe('valueToBodyShape', () => {
-  it('suy ra type của primitive và null', () => {
+  it('infers the type of primitives and null', () => {
     expect(valueToBodyShape('x')).toEqual({ type: 'string' })
     expect(valueToBodyShape(1)).toEqual({ type: 'number' })
     expect(valueToBodyShape(true)).toEqual({ type: 'boolean' })
     expect(valueToBodyShape(null)).toEqual({ type: 'null' })
   })
 
-  it('suy ra object lồng nhau và sắp key để deterministic', () => {
+  it('infers nested objects and sorts keys for determinism', () => {
     expect(valueToBodyShape({ b: 1, a: 'x' })).toEqual({
       type: 'object',
       properties: { a: { type: 'string' }, b: { type: 'number' } },
     })
   })
 
-  it('array rỗng cho items unknown, không phải object rỗng', () => {
+  it('an empty array yields unknown items, not an empty object', () => {
     expect(valueToBodyShape([])).toEqual({ type: 'array', items: { type: 'unknown' } })
   })
 
-  it('array phần tử thiếu key khác nhau thì merge key, KHÔNG tạo anyOf', () => {
+  it('array elements with differing missing keys merge their keys, NOT an anyOf', () => {
     const shape = valueToBodyShape([{ id: 1 }, { id: 2, name: 'b' }])
     expect(shape).toEqual({
       type: 'array',
@@ -34,7 +34,7 @@ describe('valueToBodyShape', () => {
     })
   })
 
-  it('KHÔNG giữ lại value — đây là bảo đảm privacy của cả format', () => {
+  it('does NOT retain values — this is the privacy guarantee of the whole format', () => {
     const secret = 'SUPERSECRET_CANARY_12345'
     const serialized = JSON.stringify(valueToBodyShape({ token: secret, nested: { a: secret } }))
     expect(serialized).not.toContain(secret)
@@ -42,30 +42,30 @@ describe('valueToBodyShape', () => {
 })
 
 describe('unifyBodyShapes', () => {
-  it('gộp array cùng kiểu items', () => {
+  it('merges arrays with the same item type', () => {
     const unified = unifyBodyShapes([{ type: 'array', items: { type: 'string' } }])
     expect(unified).toEqual({ type: 'array', items: { type: 'string' } })
   })
 
-  it('kiểu khác nhau cho anyOf, sắp xếp deterministic', () => {
+  it('different types produce anyOf, sorted deterministically', () => {
     const a = unifyBodyShapes([{ type: 'string' }, { type: 'number' }])
     const b = unifyBodyShapes([{ type: 'number' }, { type: 'string' }])
     expect(canonicalShapeKey(a)).toBe(canonicalShapeKey(b))
     expect(a).toEqual({ anyOf: [{ type: 'number' }, { type: 'string' }] })
   })
 
-  it('khử trùng lặp trước khi tạo anyOf', () => {
+  it('deduplicates before building anyOf', () => {
     const unified = unifyBodyShapes([{ type: 'string' }, { type: 'string' }])
     expect(unified).toEqual({ type: 'string' })
   })
 
-  it('danh sách rỗng cho unknown', () => {
+  it('an empty list yields unknown', () => {
     expect(unifyBodyShapes([])).toEqual({ type: 'unknown' })
   })
 })
 
 describe('canonicalShapeKey', () => {
-  it('không phụ thuộc thứ tự key được chèn', () => {
+  it('does not depend on key insertion order', () => {
     const left: BodyShape = { type: 'object', properties: { b: { type: 'number' }, a: { type: 'string' } } }
     const right: BodyShape = { type: 'object', properties: { a: { type: 'string' }, b: { type: 'number' } } }
     expect(canonicalShapeKey(left)).toBe(canonicalShapeKey(right))
@@ -73,7 +73,7 @@ describe('canonicalShapeKey', () => {
 })
 
 describe('BodyShapeSchema', () => {
-  it('mọi shape do valueToBodyShape sinh ra đều hợp lệ — derivation và schema không thể lệch', () => {
+  it('every shape produced by valueToBodyShape is valid — derivation and schema cannot drift apart', () => {
     const values: unknown[] = [
       null,
       'x',
@@ -93,7 +93,7 @@ describe('BodyShapeSchema', () => {
     }
   })
 
-  it('validate được shape lồng sâu (schema đệ quy thật sự hoạt động)', () => {
+  it('validates deeply nested shapes (the recursive schema really works)', () => {
     const deep: BodyShape = {
       type: 'object',
       properties: {
@@ -103,11 +103,11 @@ describe('BodyShapeSchema', () => {
     expect(BodyShapeSchema.safeParse(deep).success).toBe(true)
   })
 
-  it('từ chối type không nằm trong danh sách', () => {
+  it('rejects a type that is not in the list', () => {
     expect(BodyShapeSchema.safeParse({ type: 'date' }).success).toBe(false)
   })
 
-  it('từ chối anyOf rỗng', () => {
+  it('rejects an empty anyOf', () => {
     expect(BodyShapeSchema.safeParse({ anyOf: [] }).success).toBe(false)
   })
 })

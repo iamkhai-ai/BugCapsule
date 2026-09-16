@@ -5,10 +5,10 @@ export const ConsoleLevelSchema = z.enum(['error', 'warn', 'info', 'debug', 'log
 export type ConsoleLevel = z.infer<typeof ConsoleLevelSchema>
 
 /**
- * Nguồn của console entry.
+ * Source of a console entry.
  *
- * `extension` dùng để lọc noise từ extension khác (`chrome-extension://`) —
- * rác rất phổ biến trong bug report thật và thường bị nhầm là lỗi của app.
+ * `extension` is used to filter noise from other extensions (`chrome-extension://`) —
+ * junk that is very common in real bug reports and is often mistaken for an app error.
  */
 export const ConsoleSourceSchema = z.enum(['page', 'extension', 'unknown'])
 
@@ -17,9 +17,9 @@ export const ConsoleEntrySchema = EventBaseSchema.extend({
   message: z.string(),
   stack: z.string().optional(),
   /**
-   * Argument đã được producer serialize thành chuỗi, kèm depth-limit,
-   * size-limit, cycle-safe và redaction. Format chỉ lưu chuỗi để không phải
-   * định nghĩa một ngôn ngữ tuần tự hoá object.
+   * Arguments that the producer has serialized into strings, with depth-limit,
+   * size-limit, cycle-safety and redaction. The format only stores strings so
+   * that it does not have to define an object serialization language.
    */
   args: z.array(z.string()).optional(),
   source: ConsoleSourceSchema,

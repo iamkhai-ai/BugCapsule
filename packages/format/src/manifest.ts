@@ -1,7 +1,7 @@
 import * as z from 'zod'
 import { FormatVersionSchema, IsoTimestampSchema, UrlRefSchema } from './common'
 
-/** Producer của capsule. Không ràng buộc — third party được khuyến khích. */
+/** Producer of the capsule. Unconstrained — third parties are encouraged. */
 export const SourceSchema = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
@@ -16,19 +16,19 @@ export const CaptureWindowSchema = z.object({
 export type CaptureWindow = z.infer<typeof CaptureWindowSchema>
 
 /**
- * Vai trò của capsule trong một phép so sánh.
+ * Role of the capsule in a comparison.
  *
- * Optional để giữ cho capsule tối thiểu (spec §29) vẫn hợp lệ. Reader MUST
- * coi field thiếu là `"unknown"`.
+ * Optional so that a minimal capsule (spec §29) stays valid. A reader MUST treat
+ * a missing field as `"unknown"`.
  */
 export const CapsuleRoleSchema = z.enum(['working', 'broken', 'unknown'])
 export type CapsuleRole = z.infer<typeof CapsuleRoleSchema>
 
 /**
- * Bản đồ tên logic → đường dẫn entry trong archive.
+ * Map of logical name → entry path inside the archive.
  *
- * Mọi giá trị MUST là đường dẫn tương đối, không chứa `..`, không bắt đầu bằng
- * `/`, và MUST trỏ tới một entry nằm trong chính archive đó (spec §26).
+ * Every value MUST be a relative path, must not contain `..`, must not start
+ * with `/`, and MUST point to an entry contained in that same archive (spec §26).
  */
 export const ManifestFilesSchema = z.object({
   environment: z.string().optional(),
@@ -52,9 +52,9 @@ export const ManifestSchema = z.object({
   page: UrlRefSchema.optional(),
   files: ManifestFilesSchema.optional(),
   /**
-   * Các khoảng trống đã biết của phiên capture, dạng mã ngắn
+   * Known gaps of the capture session, as short codes
    * (`"workers-not-captured"`, `"missed-before-inject"`, `"sw-restarted"`, ...).
-   * Khai báo trung thực để consumer không săn dữ liệu không tồn tại.
+   * Declared honestly so consumers do not hunt for data that does not exist.
    */
   captureGaps: z.array(z.string()).optional(),
 })

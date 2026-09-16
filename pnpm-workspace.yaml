@@ -1,11 +1,11 @@
 packages:
   - 'packages/*'
 
-# Chính sách supply-chain: chỉ chấp nhận package đã publish được >= 24 giờ.
-# Khai báo tường minh ở đây để repo không phụ thuộc vào default của môi trường,
-# và để contributor biết vì sao dependency bị pin chặt.
+# Supply-chain policy: only accept packages that have been published for >= 24 hours.
+# Declared explicitly here so the repo does not depend on the environment's
+# default, and so contributors know why dependencies are pinned tightly.
 minimumReleaseAge: 1440
 
-# esbuild cần chạy postinstall để liên kết binary theo platform.
+# esbuild needs to run postinstall to link the platform-specific binary.
 allowBuilds:
   esbuild: true

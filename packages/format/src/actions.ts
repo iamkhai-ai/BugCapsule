@@ -5,10 +5,10 @@ export const ActionTypeSchema = z.enum(['click', 'input', 'change', 'submit', 'n
 export type ActionType = z.infer<typeof ActionTypeSchema>
 
 /**
- * Chiến lược chọn selector, theo thứ tự ưu tiên giảm dần.
+ * Selector selection strategy, in decreasing order of priority.
  *
- * `structural` là phương án cuối vì nó phụ thuộc cấu trúc DOM và sẽ hỏng khi
- * app đổi layout — consumer nên hiển thị nó với độ tin cậy thấp.
+ * `structural` is the last resort because it depends on DOM structure and will
+ * break when the app changes layout — consumers should present it with low confidence.
  */
 export const SelectorStrategySchema = z.enum([
   'testid',
@@ -26,7 +26,7 @@ export const ActionTargetSchema = z.object({
   inputType: z.string().optional(),
 })
 
-/** Chỉ số đo về value, **không bao giờ là value**. */
+/** Metrics about a value, **never the value itself**. */
 export const ActionMetadataSchema = z.object({
   valueCaptured: z.boolean(),
   valueLength: z.number().int().nonnegative().optional(),
@@ -35,7 +35,7 @@ export const ActionMetadataSchema = z.object({
 export const ActionEventSchema = EventBaseSchema.extend({
   type: ActionTypeSchema,
   target: ActionTargetSchema.optional(),
-  /** Chỉ có với `type: "navigation"`. */
+  /** Present only with `type: "navigation"`. */
   url: z.string().optional(),
   metadata: ActionMetadataSchema.optional(),
 })

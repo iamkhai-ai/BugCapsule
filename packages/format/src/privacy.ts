@@ -1,19 +1,19 @@
 import * as z from 'zod'
 
 /**
- * Cấu hình capture đã dùng khi tạo capsule.
+ * Capture configuration that was in effect when the capsule was created.
  *
- * Đây là bản ghi trung thực: nếu `requestBodies` là `false`, consumer MUST
- * hiểu rằng body không hề được đọc, chứ không phải "đã đọc rồi xoá".
+ * This is an honest record: if `requestBodies` is `false`, a consumer MUST understand
+ * that the body was never read at all, not that it was "read and then deleted".
  */
 export const PrivacyPolicySchema = z.object({
   queryValues: z.boolean(),
   requestBodies: z.boolean(),
   responseBodies: z.boolean(),
   /**
-   * Shape (cây type) của request/response body, không chứa value.
-   * Mặc định `true` — shape không phải PII, và nó là nguồn của hầu hết
-   * signal diff (type-change, nullability-change, presence-change).
+   * Shape (type tree) of the request/response body, containing no values.
+   * Defaults to `true` — shape is not PII, and it is the source of most
+   * diff signals (type-change, nullability-change, presence-change).
    */
   bodyShapes: z.boolean(),
   storageValues: z.boolean(),
@@ -22,10 +22,10 @@ export const PrivacyPolicySchema = z.object({
 export type PrivacyPolicy = z.infer<typeof PrivacyPolicySchema>
 
 /**
- * Tên của những field đã bị loại bỏ. **Chỉ tên, không bao giờ value.**
+ * Names of the fields that were removed. **Names only, never values.**
  *
- * Tên header/query key không phải secret, và "auth header có được gửi không"
- * là câu hỏi debug thật. Đếm số lượng mà không nêu tên là không đủ.
+ * Header/query key names are not secrets, and "was the auth header sent?" is
+ * a real debugging question. Counting without naming is not enough.
  */
 export const RemovedFieldsSchema = z.object({
   headers: z.array(z.string()),
@@ -56,8 +56,8 @@ export const PrivacySchema = z.object({
 export type Privacy = z.infer<typeof PrivacySchema>
 
 /**
- * Tổng số field đã bị loại bỏ. Đây là hàm dẫn xuất chứ không phải field lưu
- * trữ — tránh hai nguồn sự thật có thể lệch nhau.
+ * Total number of removed fields. This is a derived function, not a stored
+ * field — avoiding two sources of truth that can drift apart.
  */
 export function removedFieldCount(privacy: Privacy): number {
   const { headers, queryKeys, bodyPaths, storageKeys } = privacy.redaction.removedFields

@@ -1,30 +1,31 @@
 import * as z from 'zod'
 
 /**
- * Giá trị thay thế cho mọi dữ liệu đã bị redaction engine loại bỏ.
- * Xuất hiện trong capsule ở dạng chuỗi literal này — không bao giờ là giá trị gốc.
+ * Replacement value for all data removed by the redaction engine.
+ * Appears in the capsule as this literal string — never the original value.
  */
 export const REDACTED = '<redacted>'
 
-/** `formatVersion` là semver đầy đủ MAJOR.MINOR.PATCH (spec §22). */
+/** `formatVersion` is a full semver MAJOR.MINOR.PATCH (spec §22). */
 export const FormatVersionSchema = z
   .string()
-  .regex(/^\d+\.\d+\.\d+$/, 'formatVersion phải là semver MAJOR.MINOR.PATCH')
+  .regex(/^\d+\.\d+\.\d+$/, 'formatVersion must be semver MAJOR.MINOR.PATCH')
 
-/** Timestamp tuyệt đối, ISO 8601 UTC, luôn kết thúc bằng `Z` (spec §3.2). */
+/** Absolute timestamp, ISO 8601 UTC, always ending in `Z` (spec §3.2). */
 export const IsoTimestampSchema = z
   .string()
   .regex(
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/,
-    'timestamp phải là ISO 8601 UTC kết thúc bằng Z',
+    'timestamp must be ISO 8601 UTC ending in Z',
   )
 
 /**
- * Tham chiếu URL.
+ * URL reference.
  *
- * `query` giữ **tên và value** của query parameter, nhưng value của những key
- * nằm trong denylist đã bị thay bằng `REDACTED` từ trước khi rời page context.
- * Nhờ vậy `?tab=settings` vẫn là signal diff được, còn `?token=...` thì không.
+ * `query` keeps the **name and value** of each query parameter, but the value of
+ * any key on the denylist has already been replaced by `REDACTED` before leaving
+ * the page context. That way `?tab=settings` stays a diffable signal, while
+ * `?token=...` does not.
  */
 export const UrlRefSchema = z.object({
   origin: z.string(),
@@ -34,12 +35,12 @@ export const UrlRefSchema = z.object({
 export type UrlRef = z.infer<typeof UrlRefSchema>
 
 /**
- * Field chung của mọi event trong capsule.
+ * Common fields of every event in the capsule.
  *
- * - `docId` phân biệt các document sau hard navigation. Không có nó thì
- *   `offsetMs` của document cũ và document mới không thể tách rời.
- * - `frameId` cho biết event đến từ iframe nào (`0` = top frame).
- * - `seq` phá thế hoà khi hai event có cùng `offsetMs`, giữ diff deterministic.
+ * - `docId` distinguishes documents across a hard navigation. Without it,
+ *   `offsetMs` values from the old and the new document cannot be told apart.
+ * - `frameId` records which iframe the event came from (`0` = top frame).
+ * - `seq` breaks ties when two events share the same `offsetMs`, keeping the diff deterministic.
  */
 export const EventBaseSchema = z.object({
   id: z.string().min(1),

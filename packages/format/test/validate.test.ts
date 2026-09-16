@@ -15,7 +15,7 @@ const minimalManifest = {
   },
 }
 
-/** Capsule đầy đủ và TRUNG THỰC — mọi test khác chỉ là biến thể của nó. */
+/** A complete and HONEST capsule — every other test is just a variation of it. */
 function honestCapsule(): CapsuleParts {
   return {
     manifest: minimalManifest,
@@ -69,42 +69,42 @@ function honestCapsule(): CapsuleParts {
 }
 
 describe('validateManifest', () => {
-  it('chấp nhận manifest tối thiểu hợp lệ', () => {
+  it('accepts a valid minimal manifest', () => {
     const result = validateManifest(minimalManifest)
     expect(result.ok).toBe(true)
     expect(result.value?.id).toBe('example')
   })
 
-  it('từ chối input không phải object', () => {
+  it('rejects non-object input', () => {
     expect(validateManifest(null).ok).toBe(false)
     expect(validateManifest('nope').ok).toBe(false)
   })
 
-  it('mặc định bỏ qua field lạ — forward compatibility (spec §21)', () => {
+  it('skips unknown fields by default — forward compatibility (spec §21)', () => {
     const result = validateManifest({ ...minimalManifest, futureField: 1 })
     expect(result.ok).toBe(true)
     expect(result.issues).toHaveLength(0)
   })
 
-  it('strict mode báo field lạ ở cấp gốc — bắt lỗi typo khi TẠO capsule', () => {
+  it('strict mode reports unknown root fields — catches typos when CREATING a capsule', () => {
     const result = validateManifest({ ...minimalManifest, bugcapsuleTypo: 1 }, { strict: true })
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.path)).toContain('bugcapsuleTypo')
   })
 
-  it('strict mode báo field lạ lồng nhau bằng đường dẫn có dấu chấm', () => {
+  it('strict mode reports nested unknown fields with a dotted path', () => {
     const manifest = { ...minimalManifest, capture: { ...minimalManifest.capture, odd: true } }
     const result = validateManifest(manifest, { strict: true })
     expect(result.issues.map((issue) => issue.path)).toContain('capture.odd')
   })
 
-  it('MAJOR không hỗ trợ thì từ chối, không cố đoán', () => {
+  it('rejects an unsupported MAJOR instead of trying to guess', () => {
     const result = validateManifest({ ...minimalManifest, formatVersion: '1.0.0' })
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('unsupported-format-version')
   })
 
-  it('MINOR cao hơn thì đọc được nhưng phải cảnh báo', () => {
+  it('a higher MINOR is readable but must warn', () => {
     const result = validateManifest({ ...minimalManifest, formatVersion: '0.2.0' })
     expect(result.ok).toBe(true)
     expect(result.warnings.length).toBeGreaterThan(0)
@@ -112,17 +112,17 @@ describe('validateManifest', () => {
 })
 
 describe('validateCapsule', () => {
-  it('chấp nhận capsule trung thực', () => {
+  it('accepts an honest capsule', () => {
     const result = validateCapsule(honestCapsule())
     expect(result.issues).toEqual([])
     expect(result.ok).toBe(true)
   })
 
-  it('từ chối khi thiếu manifest', () => {
+  it('rejects a missing manifest', () => {
     expect(validateCapsule({ network: { requests: [] } }).ok).toBe(false)
   })
 
-  it('từ chối capture window ngược thời gian', () => {
+  it('rejects a capture window that runs backwards in time', () => {
     const parts = honestCapsule()
     parts.manifest = {
       ...minimalManifest,
@@ -133,7 +133,7 @@ describe('validateCapsule', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('capture-window-invalid')
   })
 
-  it('từ chối input type=password có valueCaptured=true — không có override', () => {
+  it('rejects input type=password with valueCaptured=true — there is no override', () => {
     const parts = honestCapsule()
     parts.actions = {
       events: [
@@ -154,7 +154,7 @@ describe('validateCapsule', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('password-value-captured')
   })
 
-  it('từ chối bodyCaptured=false nhưng vẫn có body', () => {
+  it('rejects bodyCaptured=false when a body is still present', () => {
     const parts = honestCapsule()
     const request = (parts.network as { requests: Record<string, unknown>[] }).requests[0]
     request.request = { bodyCaptured: false, body: { type: 'json', value: { quantity: 1 } } }
@@ -165,11 +165,11 @@ describe('validateCapsule', () => {
 })
 
 /**
- * Đây là phần quan trọng nhất của validator: `privacy.json` là một LỜI TUYÊN
- * BỐ, và validator biến nó thành lời tuyên bố **được kiểm chứng**. Nếu policy
- * nói "không capture body" mà body vẫn có mặt, capsule không hợp lệ.
+ * This is the most important part of the validator: `privacy.json` is a CLAIM,
+ * and the validator turns it into a **verified** claim. If the policy says
+ * "no body capture" but a body is still present, the capsule is invalid.
  */
-describe('validateCapsule — kiểm chứng lời tuyên bố privacy', () => {
+describe('validateCapsule — verifying the privacy claim', () => {
   function withPolicy(overrides: Record<string, boolean>): CapsuleParts {
     const parts = honestCapsule()
     const privacy = parts.privacy as { policy: Record<string, boolean> }
@@ -177,7 +177,7 @@ describe('validateCapsule — kiểm chứng lời tuyên bố privacy', () => {
     return parts
   }
 
-  it('policy nói không capture request body mà body có mặt thì bất hợp lệ', () => {
+  it('invalid when the policy says no request bodies but a body is present', () => {
     const parts = withPolicy({ requestBodies: false })
     const request = (parts.network as { requests: Record<string, unknown>[] }).requests[0]
     request.request = {
@@ -189,7 +189,7 @@ describe('validateCapsule — kiểm chứng lời tuyên bố privacy', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('privacy-claim-violated')
   })
 
-  it('policy nói không capture storage value mà value có mặt thì bất hợp lệ', () => {
+  it('invalid when the policy says no storage values but a value is present', () => {
     const parts = withPolicy({ storageValues: false })
     const state = parts.state as { localStorage: Record<string, unknown>[] }
     state.localStorage[0] = { key: 'feature_new_checkout', valueCaptured: true, value: true }
@@ -198,21 +198,21 @@ describe('validateCapsule — kiểm chứng lời tuyên bố privacy', () => {
     expect(result.issues.map((issue) => issue.code)).toContain('privacy-claim-violated')
   })
 
-  it('policy nói không capture bodyShape mà bodyShape có mặt thì bất hợp lệ', () => {
+  it('invalid when the policy says no body shapes but a body shape is present', () => {
     const parts = withPolicy({ bodyShapes: false })
     const result = validateCapsule(parts)
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('privacy-claim-violated')
   })
 
-  it('policy nói không lưu query value mà có value chưa redact thì bất hợp lệ', () => {
+  it('invalid when the policy says no query values but an unredacted value is present', () => {
     const parts = withPolicy({ queryValues: false })
     const result = validateCapsule(parts)
     expect(result.ok).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('privacy-claim-violated')
   })
 
-  it('cùng policy đó nhưng query đã redact hết thì hợp lệ', () => {
+  it('valid under that same policy once every query value is redacted', () => {
     const parts = withPolicy({ queryValues: false })
     const request = (parts.network as { requests: { url: { query: Record<string, string> } }[] })
       .requests[0]

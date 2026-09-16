@@ -12,9 +12,11 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "gen:schemas": "tsx scripts/generate-json-schema.ts",
-    "check:schemas": "tsx scripts/generate-json-schema.ts --check"
+    "check:schemas": "tsx scripts/generate-json-schema.ts --check",
+    "gen:fixtures": "tsx scripts/generate-fixtures.ts"
   },
   "devDependencies": {
+    "@bugcapsule/fixtures": "workspace:*",
     "@bugcapsule/format": "workspace:*",
     "@types/node": "24.13.4",
     "tsx": "4.23.13",

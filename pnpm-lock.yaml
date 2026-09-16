@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@bugcapsule/fixtures':
+        specifier: workspace:*
+        version: link:packages/fixtures
       '@bugcapsule/format':
         specifier: workspace:*
         version: link:packages/format
@@ -26,6 +29,12 @@ importers:
       vitest:
         specifier: 5.0.0
         version: 5.0.0(@types/node@24.13.4)(vite@7.3.6(@types/node@24.13.4)(tsx@4.23.13))
+
+  packages/fixtures:
+    dependencies:
+      '@bugcapsule/format':
+        specifier: workspace:*
+        version: link:../format
 
   packages/format:
     dependencies:
